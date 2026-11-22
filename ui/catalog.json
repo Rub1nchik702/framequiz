@@ -1,0 +1,434 @@
+[
+  {
+    "cat": "anime",
+    "q": "Which anime follows pirates searching for the treasure left by Gol D. Roger?",
+    "a": "One Piece",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows a ninja who dreams of becoming Hokage?",
+    "a": "Naruto",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "In which anime does a notebook let its owner kill by writing a name?",
+    "a": "Death Note",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows Tanjiro as he searches for a cure for his sister?",
+    "a": "Demon Slayer",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime features the Hero Association and a hero named Saitama?",
+    "a": "One Punch Man",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows a boy named Ash and his partner Pikachu?",
+    "a": "Pokémon",
+    "level": "easy"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime follows the Elric brothers after a failed human transmutation?",
+    "a": "Fullmetal Alchemist",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "In which series does Yuji Itadori become Sukuna's vessel?",
+    "a": "Jujutsu Kaisen",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows the volleyball team at Karasuno High?",
+    "a": "Haikyu!!",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime follows bounty hunters aboard the Bebop?",
+    "a": "Cowboy Bebop",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "In which series do the Forger family hide their true identities from one another?",
+    "a": "Spy x Family",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime follows a young hunter searching for his father, Ging?",
+    "a": "Hunter x Hunter",
+    "level": "medium"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows a medicine seller who needs a spirit's Form, Truth and Reason?",
+    "a": "Mononoke",
+    "level": "hard"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime follows Ginko as he investigates mysterious life forms called mushi?",
+    "a": "Mushishi",
+    "level": "hard"
+  },
+  {
+    "cat": "anime",
+    "q": "Which film follows a former idol named Mima as she begins an acting career?",
+    "a": "Perfect Blue",
+    "level": "hard"
+  },
+  {
+    "cat": "anime",
+    "q": "Which series follows the Rakugo performer known as Yakumo in his later years?",
+    "a": "Showa Genroku Rakugo Shinju",
+    "level": "hard"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime follows two girls named Chito and Yuuri through a ruined city?",
+    "a": "Girls' Last Tour",
+    "level": "hard"
+  },
+  {
+    "cat": "anime",
+    "q": "Which anime features competing table tennis players nicknamed Smile and Peco?",
+    "a": "Ping Pong the Animation",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film features a theme park filled with cloned dinosaurs?",
+    "a": "Jurassic Park",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows Jack and Rose aboard an ocean liner?",
+    "a": "Titanic",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "In which film does Neo choose between a red pill and a blue pill?",
+    "a": "The Matrix",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "Which film features a stranded alien who wants to phone home?",
+    "a": "E.T. the Extra-Terrestrial",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a teenager driving a time-traveling DeLorean?",
+    "a": "Back to the Future",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a boy accidentally left behind at Christmas?",
+    "a": "Home Alone",
+    "level": "easy"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows workers who enter shared dreams to plant an idea?",
+    "a": "Inception",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a jazz drummer studying under Terence Fletcher?",
+    "a": "Whiplash",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a man whose entire life is secretly televised?",
+    "a": "The Truman Show",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows astronauts on a mission through a wormhole near Saturn?",
+    "a": "Interstellar",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film features a chef who controls a young cook by pulling his hair?",
+    "a": "Ratatouille",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows an astronaut growing potatoes on Mars?",
+    "a": "The Martian",
+    "level": "medium"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a photographer who suspects a neighbor of murder while recovering from an injury?",
+    "a": "Rear Window",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a silent-era star named George Valentin?",
+    "a": "The Artist",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film features a concierge named Gustave and a lobby boy named Zero?",
+    "a": "The Grand Budapest Hotel",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a linguist who studies the written language of heptapods?",
+    "a": "Arrival",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows a pianist named Władysław Szpilman in occupied Warsaw?",
+    "a": "The Pianist",
+    "level": "hard"
+  },
+  {
+    "cat": "film",
+    "q": "Which film follows an insurance investigator named Leonard who uses tattoos to remember?",
+    "a": "Memento",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which sitcom follows six friends who often meet at Central Perk?",
+    "a": "Friends",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which show follows a chemistry teacher named Walter White?",
+    "a": "Breaking Bad",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series is set in Hawkins, Indiana, and features the Upside Down?",
+    "a": "Stranger Things",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which fantasy series features the Iron Throne of Westeros?",
+    "a": "Game of Thrones",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which show follows Wednesday Addams at Nevermore Academy?",
+    "a": "Wednesday",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which US sitcom follows the Scranton branch of Dunder Mifflin?",
+    "a": "The Office",
+    "level": "easy"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows a football coach from Kansas hired by AFC Richmond?",
+    "a": "Ted Lasso",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows a chess player named Beth Harmon?",
+    "a": "The Queen's Gambit",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows survivors of Oceanic Flight 815?",
+    "a": "Lost",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows a hacker named Elliot Alderson?",
+    "a": "Mr. Robot",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows the Roy family and its media empire?",
+    "a": "Succession",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows employees at Lumon who split their work and personal memories?",
+    "a": "Severance",
+    "level": "medium"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows Soviet agents posing as an American couple named Philip and Elizabeth?",
+    "a": "The Americans",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series begins with the disappearance of children in the German town of Winden?",
+    "a": "Dark",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series follows a Baltimore wiretap investigation led by a detail including Daniels and McNulty?",
+    "a": "The Wire",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series features the advertising agency Sterling Cooper?",
+    "a": "Mad Men",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which series features a town where FBI agent Dale Cooper investigates Laura Palmer's death?",
+    "a": "Twin Peaks",
+    "level": "hard"
+  },
+  {
+    "cat": "tv",
+    "q": "Which drama follows a professional fixer named Ray who works for Hollywood clients?",
+    "a": "Ray Donovan",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which cartoon is set in Bikini Bottom?",
+    "a": "SpongeBob SquarePants",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a blue cat and his goldfish brother Darwin?",
+    "a": "The Amazing World of Gumball",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows siblings Dipper and Mabel during a summer in Oregon?",
+    "a": "Gravity Falls",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a yellow family living in Springfield?",
+    "a": "The Simpsons",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which cartoon pairs a cat with a brown mouse in a long-running chase?",
+    "a": "Tom and Jerry",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which cartoon features a Great Dane traveling in the Mystery Machine?",
+    "a": "Scooby-Doo",
+    "level": "easy"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows Finn and Jake in the Land of Ooo?",
+    "a": "Adventure Time",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which cartoon follows a boy who can transform using the Omnitrix?",
+    "a": "Ben 10",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a boy raised by the Crystal Gems?",
+    "a": "Steven Universe",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a waterbender named Katara and an airbender named Aang?",
+    "a": "Avatar: The Last Airbender",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows Mordecai and Rigby as park employees?",
+    "a": "Regular Show",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows Luz Noceda in the Boiling Isles?",
+    "a": "The Owl House",
+    "level": "medium"
+  },
+  {
+    "cat": "toon",
+    "q": "Which miniseries follows Wirt and Greg through the Unknown?",
+    "a": "Over the Garden Wall",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which animated series follows a girl and her deerfox Twig in Trolberg?",
+    "a": "Hilda",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a train whose cars each contain a distinct world?",
+    "a": "Infinity Train",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows a cave dweller named Spear and a dinosaur named Fang?",
+    "a": "Primal",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which animated series follows a young Viking named Hiccup and a dragon named Toothless on adventures beyond Berk?",
+    "a": "DreamWorks Dragons",
+    "level": "hard"
+  },
+  {
+    "cat": "toon",
+    "q": "Which series follows Anne Boonchuy in a world of talking frogs?",
+    "a": "Amphibia",
+    "level": "hard"
+  }
+]

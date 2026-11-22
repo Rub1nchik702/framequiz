@@ -1,0 +1,31 @@
+name: Publish Windows release
+on: workflow_dispatch
+permissions:
+  contents: write
+concurrency: framequiz-windows-release
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile studio
+        run: cargo build --locked --release
+      - name: Prepare packaged dependencies
+        shell: pwsh
+        run: |
+          gh release download --pattern Framequiz-Windows.zip --dir previous
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Expand-Archive previous/Framequiz-Windows.zip previous/files
+          New-Item -ItemType Directory dist
+          Copy-Item previous/files/ffmpeg.exe,previous/files/FFmpeg-COPYING.txt dist
+          Invoke-WebRequest https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/1.0.3650.58/microsoft.web.webview2.1.0.3650.58.nupkg -OutFile sdk.zip
+          Expand-Archive sdk.zip sdk
+      - name: Package and publish
+        shell: pwsh
+        run: |
+          python tools/package.py --webview-sdk sdk
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
+          gh release create "v$version" dist/Framequiz-Windows.zip --target $env:GITHUB_SHA --title "Framequiz Studio $version" --generate-notes

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <script>if (location.pathname === "/" && localStorage.getItem("framequiz-language") === "en") location.replace("/en");</script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="/sun.svg" type="image/svg+xml" />
+    <title>Framequiz Studio</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img class="logo" src="/sun.svg" alt="" /> Framequiz <em>Studio</em>
+      </div>
+      <nav>
+        <button data-tab="studio" class="active">Редактор</button
+        ><button data-tab="tracks">Фонотека</button
+        ><button data-tab="library">Источники</button
+        ><button data-tab="trends">Тренды</button>
+      </nav>
+      <button id="language" aria-label="English / Русский">EN / RU</button>
+      <span class="online">v@VERSION@</span
+      ><button
+        id="quit"
+        title="Завершить работу студии"
+        aria-label="Завершить работу"
+      >
+        ⏻
+      </button>
+    </header>
+    <main>
+      <section id="studio">
+        <div class="intro">
+          <div>
+            <h1>Студия квизов<span>.</span></h1>
+            <p>Соберите выпуск и подготовьте его для YouTube.</p>
+          </div>
+          <button id="export" class="primary">↑ &nbsp; Экспорт MP4</button>
+        </div>
+        <div class="workspace">
+          <div class="panel settings">
+            <div class="panelhead">
+              <span class="icon">☷</span>
+              <h2>Состав выпуска</h2>
+            </div>
+            <label>Тип квиза</label>
+            <div class="quiz-switch">
+              <button id="textQuiz">Текстовый</button
+              ><button id="musicQuiz">♫ Музыкальный</button>
+            </div>
+            <label>Формат выпуска</label>
+            <div id="formats" class="formats">
+              <button data-format="short" class="selected">
+                <i>▯</i><b>Shorts</b><small>9:16 · до 1 минуты</small></button
+              ><button data-format="long">
+                <i>▭</i><b>YouTube</b><small>16:9 · 5–10 минут</small>
+              </button>
+            </div>
+            <div id="musicConfig" hidden>
+              <label for="openingSource">Источник опенингов и эндингов</label>
+              <select id="openingSource">
+                <option value="local">Фонотека</option>
+                <option value="anisongdb">AnisongDB · загрузить автоматически</option>
+              </select>
+              <div class="matrix-heading">
+                <h3>Треки и сложность</h3>
+                <button id="goTracks">+ Загрузить</button>
+              </div>
+              <table id="quotas">
+                <thead>
+                  <tr>
+                    <th>Тип</th>
+                    <th>Легко</th>
+                    <th>Средне</th>
+                    <th>Сложно</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+              <small id="clipTiming"></small>
+              <p id="openingStatus" role="status" hidden></p>
+            </div>
+            <div class="pair">
+              <div id="catGroup">
+                <label for="cat">Тематика</label
+                ><select id="cat">
+                  <option value="anime">Аниме</option>
+                  <option value="film">Фильмы</option>
+                  <option value="tv">Сериалы</option>
+                  <option value="toon">Мультфильмы</option>
+                </select>
+              </div>
+              <div>
+                <label for="audience">Аудитория</label
+                ><select id="audience">
+                  <option value="casual">Начинающие</option>
+                  <option value="fans">Знатоки</option>
+                </select>
+              </div>
+            </div>
+            <label for="level">Уровень сложности</label
+            ><select id="level">
+              <option value="mix">Смешанный уровень</option>
+              <option value="easy">Легко</option>
+              <option value="medium">Средне</option>
+              <option value="hard">Сложно</option>
+            </select>
+            <div class="pair">
+              <div>
+                <label for="count">Вопросы</label
+                ><input id="count" type="number" min="1" max="60" value="5" />
+              </div>
+              <div>
+                <label for="duration">Длительность</label
+                ><select id="duration"></select>
+              </div>
+            </div>
+            <label for="theme">Шаблон кадра</label
+            ><select id="theme">
+              <option value="solar">Восход · киновинтаж</option>
+              <option value="ocean">Прилив · индиго</option>
+              <option value="forest">Тайга · нефрит</option>
+            </select>
+            <div class="foot">
+              <span id="summary"></span
+              ><button id="generate" class="primary">Собрать план ↗</button>
+            </div>
+          </div>
+          <div class="panel monitor">
+            <div class="panelhead">
+              <span class="icon">▣</span>
+              <h2>Кадр выпуска</h2>
+              <small id="dimensions"></small>
+            </div>
+            <div class="stage">
+              <canvas id="frame"></canvas
+              ><button id="pairedFrame" hidden>
+                <canvas id="pairedCanvas"></canvas><span></span>
+              </button>
+              <div id="emptyMusic" hidden>
+                <img src="/sun.svg" alt="" />
+                <h3>Музыкальный квиз</h3>
+                <p>Выберите число треков и соберите план выпуска.</p>
+                <button id="emptyImport">Открыть фонотеку</button>
+              </div>
+            </div>
+            <div class="transport">
+              <div class="tabs">
+                <button id="question" class="selected">Вопрос</button
+                ><button id="answer">Ответ</button
+                ><button id="cover">Обложка</button>
+              </div>
+              <div>
+                <button id="prev" aria-label="Предыдущий вопрос">‹</button
+                ><b id="counter"></b
+                ><button id="next" aria-label="Следующий вопрос">›</button
+                ><button id="play" aria-label="Воспроизведение">▶</button>
+              </div>
+            </div>
+            <div id="coverTools" hidden>
+              <label for="coverTitle">Заголовок обложки</label>
+              <div class="pair">
+                <input id="coverTitle" maxlength="80" /><button id="png">
+                  Скачать PNG
+                </button>
+              </div>
+              <label for="coverImage">Своя иллюстрация для обложки</label
+              ><input id="coverImage" type="file" accept="image/*" /><button
+                id="clearImage"
+                class="spaced"
+                hidden
+              >
+                Убрать иллюстрацию
+              </button>
+            </div>
+          </div>
+          <div class="panel plan">
+            <div class="panelhead">
+              <span class="icon">≡</span>
+              <h2>План выпуска</h2>
+              <small id="planMeta"></small>
+            </div>
+            <div id="rounds"></div>
+          </div>
+        </div>
+      </section>
+      <section id="tracks" hidden>
+        <div class="intro">
+          <div>
+            <h1>Фонотека<span>.</span></h1>
+            <p>Музыка для раундов OP, ED и OST.</p>
+          </div>
+          <button id="composeMusic" class="primary">
+            В музыкальный редактор ↗
+          </button>
+        </div>
+        <div class="workspace">
+          <div><form id="uploadForm" class="panel">
+            <div class="panelhead">
+              <span class="icon"></span>
+              <h2>Добавить трек</h2>
+            </div>
+            <p id="selectedSource" hidden></p>
+            <button type="button" id="clearPick" hidden>Вернуться к импорту файла</button>
+            <label for="trackFile">Аудиофайл</label
+            ><input
+              type="file"
+              id="trackFile"
+              accept="audio/*,.m4a,.flac,.ogg"
+              required
+            />
+            <label for="animeName">Название аниме</label
+            ><input
+              id="animeName"
+              required
+              maxlength="160"
+              placeholder="Например, Naruto"
+            />
+            <label for="trackTitle">Название трека</label
+            ><input
+              id="trackTitle"
+              required
+              maxlength="160"
+              placeholder="Например, GO!!!"
+            />
+            <div class="pair">
+              <div>
+                <label for="trackKind">Тип трека</label
+                ><select id="trackKind">
+                  <option value="OP">OP · Опенинг</option>
+                  <option value="ED">ED · Эндинг</option>
+                  <option value="OST">OST · Саундтрек</option>
+                </select>
+              </div>
+              <div>
+                <label for="trackLevel">Сложность</label
+                ><select id="trackLevel">
+                  <option value="easy">Легко</option>
+                  <option value="medium">Средне</option>
+                  <option value="hard">Сложно</option>
+                </select>
+              </div>
+            </div>
+            <label for="trackOffset">Начало отрывка, сек.</label
+            ><input
+              id="trackOffset"
+              type="number"
+              min="0"
+              max="3598"
+              step="1"
+              value="0"
+              required
+            /><button class="primary spaced" id="importTrack">
+              Добавить в фонотеку
+            </button>
+            <p id="importStatus" role="status"></p>
+          </form>
+          <form id="onlineTracks" class="panel spaced">
+            <div class="panelhead"><span class="icon"></span><h2>Скачать из AnisongDB</h2></div>
+            <p>Задайте число треков для фонотеки. Студия сохранит оригинальное видео со звуком в MP4 и подготовит аудио для квиза.</p>
+            <label for="browseKind">Выбрать конкретное видео</label>
+            <div class="pair"><select id="browseKind"><option value="OP">Опенинги</option><option value="ED">Эндинги</option></select>
+            <button type="button" id="browseVideos">Показать список</button></div>
+            <p id="browseStatus" role="status"></p><div id="videoChoices"></div>
+            <h3>Случайный подбор</h3>
+            <table class="download-quota"><thead><tr><th>Тип</th><th>Легко</th><th>Средне</th><th>Сложно</th></tr></thead><tbody id="downloadRows"></tbody></table>
+            <button id="downloadMusic" class="primary spaced">Скачать в фонотеку</button>
+            <p id="downloadReport" role="status"></p>
+            <details><summary>Сверка сложности с AMQ</summary>
+              <p>В AMQ Song List UI откройте Song List → Export. Выберите сохранённый JSON здесь. Студия сверит записи по аниме, песне, исполнителю и номеру OP или ED и запомнит проценты для следующих загрузок. Для остальных песен показывается процент из AnisongDB.</p>
+              <label for="amqExport">JSON из AMQ Song List UI</label><input id="amqExport" type="file" accept=".json,application/json">
+              <p id="amqReport" role="status"></p>
+            </details>
+          </form>
+          <form id="folderForm" class="panel spaced">
+            <div class="panelhead"><span class="icon"></span><h2>Импорт папки</h2></div>
+            <label for="folderFiles">Папка с аудио</label>
+            <input id="folderFiles" type="file" webkitdirectory multiple>
+            <div class="pair"><div><label for="folderKind">Тип для всех</label><select id="folderKind"></select></div>
+            <div><label for="folderLevel">Сложность для всех</label><select id="folderLevel"></select></div></div>
+            <label for="folderAnime">Название аниме для всех</label>
+            <input id="folderAnime" placeholder="Или заполните названия в списке" maxlength="160">
+            <div id="folderQueue"></div>
+            <button id="importFolder" class="primary spaced" disabled>Импортировать папку</button>
+            <p id="folderStatus" role="status"></p>
+          </form></div>
+          <div class="panel">
+            <div class="panelhead">
+              <span class="icon"></span>
+              <h2>Мои треки</h2>
+              <small id="trackCount"></small>
+            </div>
+            <div id="trackList"></div>
+            <audio id="audition" controls hidden></audio>
+          </div>
+        </div>
+      </section>
+      <section id="library" hidden>
+        <div class="intro">
+          <div>
+            <h1>Источники<span>.</span></h1>
+            <p>
+              Пополняйте каталог вопросами и сохраняйте ссылки на идеи и
+              референсы.
+            </p>
+          </div>
+        </div>
+        <div class="workspace">
+          <div class="panel">
+            <h2>Добавить вопрос</h2>
+            <label for="manualCat">Тематика</label
+            ><select id="manualCat"></select
+            ><label for="manualLevel">Сложность</label
+            ><select id="manualLevel"></select
+            ><label for="mq">Вопрос на английском</label
+            ><textarea id="mq" maxlength="240"></textarea
+            ><label for="ma">Ответ</label
+            ><input id="ma" maxlength="120" /><label for="ms"
+              >Ссылка на источник</label
+            ><input id="ms" placeholder="https://…" /><button
+              class="primary spaced"
+              id="addQ"
+            >
+              Добавить в каталог
+            </button>
+          </div>
+          <div>
+            <div class="panel">
+              <h2>Онлайн-каталог</h2>
+              <p>
+                Загрузите до 10 англоязычных вопросов из Open Trivia Database
+                для выбранной тематики.
+              </p>
+              <button id="fetchQ">↓ Импортировать вопросы</button>
+              <p id="stats"></p>
+              <small>Open Trivia DB · CC BY-SA 4.0</small>
+            </div>
+            <div class="panel spaced">
+              <h2>Сайты и референсы</h2>
+              <label for="refName">Название</label><input id="refName" /><label
+                for="refUrl"
+                >Адрес страницы</label
+              ><input id="refUrl" placeholder="https://…" /><button
+                id="addRef"
+                class="spaced"
+              >
+                Сохранить ссылку
+              </button>
+              <div id="refs"></div>
+              <hr />
+              <h2>Импорт с сайта</h2>
+              <p>
+                Выберите тематику в форме вопроса, вставьте прямую HTTPS-ссылку на ленту или файл и нажмите «Прочитать источник».
+              </p><details><summary>Какую ссылку вставить?</summary>
+              <p><b>Для идей</b> скопируйте адрес RSS или Atom с сайта. Студия покажет до 20 публикаций. Нажмите «Взять за основу», затем впишите вопрос и ответ.</p>
+              <p><b>Для готовых вопросов</b> дайте прямую ссылку на доступный без входа JSON-файл в UTF-8. При открытии адреса должен быть виден массив, например</p>
+              <pre style="white-space:pre-wrap">[{"question":"Who is Luffy’s brother?","answer":"Ace","difficulty":"easy"}]</pre>
+              <p>Допустимые уровни — easy, medium и hard. За один раз добавляется до 200 новых вопросов выбранной тематики. Музыка загружается отдельно в фонотеке.</p></details>
+              <label for="feedUrl">Адрес ленты или каталога</label
+              ><input id="feedUrl" placeholder="https://…" /><button
+                id="loadFeed"
+                class="spaced"
+              >
+                Прочитать источник
+              </button>
+              <div id="feedResults"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="trends" hidden>
+        <div class="intro">
+          <div>
+            <h1>Тренды квизов<span>.</span></h1>
+            <p>
+              Свежие видео за 30 дней по выбранному жанру, в порядке числа
+              просмотров.
+            </p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="pair">
+            <div>
+              <label for="genre">Жанр квиза</label
+              ><input id="genre" value="anime trivia" />
+            </div>
+            <div>
+              <label for="region">Регион</label
+              ><select id="region">
+                <option>US</option>
+                <option>GB</option>
+                <option>CA</option>
+                <option>AU</option>
+              </select>
+            </div>
+          </div>
+          <label for="key">Ключ YouTube Data API v3</label
+          ><input type="password" id="key" autocomplete="off" /><button
+            id="search"
+            class="primary spaced"
+          >
+            Найти видео
+          </button>
+          <div id="results"></div>
+        </div>
+      </section>
+    </main>
+    <div role="status" id="toast" hidden></div>
+    <dialog id="dialog">
+      <h2 id="dTitle"></h2>
+      <p id="dText"></p>
+      <button id="openFolder" hidden>Открыть папку</button>
+      <button id="closeDialog">Закрыть</button>
+    </dialog>
+    <dialog id="clipDialog">
+      <h2>Выбрать отрывок</h2><p id="clipName"></p>
+      <canvas id="waveform" width="1200" height="180" aria-hidden="true"></canvas>
+      <label for="waveStart">Начало отрывка</label>
+      <input id="waveStart" type="range" min="0" step="1">
+      <p id="waveTiming" aria-live="polite"></p>
+      <audio id="waveAudio" controls hidden></audio>
+      <p id="waveStatus" role="status"></p>
+      <div class="dialog-actions"><button id="wavePlay">▶ Прослушать</button>
+        <button id="waveSave" class="primary">Сохранить</button><button id="waveClose">Закрыть</button></div>
+    </dialog>
+    <dialog id="replaceDialog">
+      <h2>Заменить трек в раунде</h2><p id="replaceInfo"></p>
+      <label for="replacement">Выберите трек</label><select id="replacement"></select>
+      <div class="dialog-actions"><button id="replaceSave" class="primary">Заменить</button><button id="replaceClose">Закрыть</button></div>
+    </dialog>
+    <script src="/music.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

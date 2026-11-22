@@ -1,2 +1,26 @@
-# framequiz
-Windows studio for creating anime music quizzes, editing rounds and exporting episodes to MP4.
+# Framequiz Studio
+
+[Русская версия](README.ru.md) · [Download for Windows](https://github.com/Rub1nchik702/framequiz/releases/latest)
+
+Framequiz Studio turns anime openings, endings and trivia questions into timed quiz videos for YouTube and Shorts. Choose tracks by difficulty, trim the clips, design a cover and export an MP4 on your Windows PC.
+
+![Framequiz episode editor](docs/studio.jpg)
+
+## First episode
+
+1. Extract the entire Windows ZIP into a writable folder and run **Framequiz.exe**. The desktop window uses Microsoft Edge WebView2 Runtime. Choose **EN / RU** in the header to switch languages.
+2. In **Music library**, import local audio or choose an opening or ending from AnisongDB. The studio stores the video, song title and anime title together. Difficulty comes from the catalog or from a matching AMQ Song List UI export.
+3. In the music editor, set the number of easy, medium and hard tracks for each type. Build the plan, adjust the start of each clip, preview and export. Finished episodes appear in the **exports** folder.
+4. For a text episode, select a topic and audience. The Sources tab accepts individual questions, a UTF-8 JSON question list, or RSS and Atom feeds for research.
+
+![Music library and track import](docs/library.jpg)
+
+## Updates from this private repository
+
+Each user needs access to this repository. Install [GitHub CLI](https://cli.github.com/), run `gh auth login --hostname github.com` once, and sign in with your own account. Then launch Framequiz normally. Starting with version **0.2.0**, the desktop client checks GitHub Releases at startup, downloads a newer stable Windows ZIP and checks its SHA-256 against GitHub's asset digest. Exit the studio from the tray to install it. The next launch uses the new version. See **update-status.txt** beside the EXE for the result. Without GitHub CLI or repository access, you can continue using the installed version.
+
+To publish the next release, update the package version in **Cargo.toml** and its matching entry in **Cargo.lock**, commit the changes to main, then select **Actions → Publish Windows release → Run workflow**. The job builds the code, reuses the packaged FFmpeg from the previous release and publishes a new version tag and ZIP. User media, exports and WebView2 drafts are stored separately.
+
+## Development
+
+Run `cargo build --release --locked` on Windows. To package, place ffmpeg.exe and FFmpeg-COPYING.txt in dist, unpack the Microsoft.Web.WebView2 NuGet SDK, and run `python tools/package.py --webview-sdk PATH_TO_SDK`. Use audio and video you have permission to publish. Open Trivia DB questions are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The Windows distribution includes the FFmpeg license.
