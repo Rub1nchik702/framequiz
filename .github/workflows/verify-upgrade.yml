@@ -1,0 +1,24 @@
+name: Verify published Windows upgrade
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/Test-Upgrade020.ps1'
+      - '.github/workflows/verify-upgrade.yml'
+permissions:
+  contents: read
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download both published versions
+        run: |
+          gh release download v0.2.0 --pattern Framequiz-Windows.zip --dir old
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh release download v0.2.1 --pattern Framequiz-Windows.zip --dir new
+      - name: Run the released 0.2.0 desktop client and verify installed 0.2.1
+        run: ./tools/Test-Upgrade020.ps1 -PreviousZip old/Framequiz-Windows.zip -NewZip new/Framequiz-Windows.zip
+
