@@ -13,7 +13,12 @@ foreach ($dir in @('tracks','exports')) {
     Set-Content -LiteralPath (Join-Path $installed "$dir/preserve.txt") -Value 'user data'
 }
 $env:FRAMEQUIZ_PORT = '39793'
-$old = Start-Process -FilePath $installedExe -ArgumentList '--tray' -WindowStyle Hidden -PassThru
+# A desktop launch inherits Windows PowerShell's module path. Actions runs this harness in pwsh 7.
+$runnerModules = $env:PSModulePath
+try {
+    $env:PSModulePath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules;$env:ProgramFiles\WindowsPowerShell\Modules"
+    $old = Start-Process -FilePath $installedExe -ArgumentList '--tray' -WindowStyle Hidden -PassThru
+} finally { $env:PSModulePath = $runnerModules }
 try {
     $deadline = (Get-Date).AddMinutes(4)
     do {
@@ -51,3 +56,4 @@ try {
         Write-Output '0.2.0 downloaded and installed 0.2.1. Package hashes, user data and authenticated startup verified.'
     } finally { if (!$new.HasExited) { $new.Kill() } }
 } finally { if (!$old.HasExited) { $old.Kill() } }
+
