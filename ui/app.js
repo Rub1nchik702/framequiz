@@ -40,17 +40,39 @@ function toast(s) {
   clearTimeout(toast.t);
   toast.t = setTimeout(() => ($("toast").hidden = true), 4800);
 }
+const errorMessages = {};
+function apiMessage(message) {
+  if (Object.hasOwn(errorMessages, message)) return errorMessages[message];
+  for (const [template, translation] of Object.entries(errorMessages)) {
+    if (!template.includes("{")) continue;
+    let rest = message;
+    const parts = template.split(/\{\w*\}/);
+    if (!rest.startsWith(parts[0])) continue;
+    rest = rest.slice(parts[0].length);
+    const values = [];
+    for (const part of parts.slice(1)) {
+      const end = part ? rest.indexOf(part) : rest.length;
+      if (end < 0) break;
+      const value = rest.slice(0,end);
+      values.push(Object.hasOwn(errorMessages,value) ? errorMessages[value] : value);
+      rest = rest.slice(end + part.length);
+    }
+    if (!rest && values.length === parts.length - 1) return translation.replace(/\{\w*\}/g, () => values.shift());
+  }
+  return message;
+}
 async function api(path, v, blob = false) {
   let r = await fetch("/api/" + path, {
     method: "POST",
     headers: {
-      "X-Quiz-Studio": "1",
+      "X-Quiz-Studio": sessionStorage.getItem("framequiz-session") || "",
       "Content-Type": blob ? "image/jpeg" : "application/json",
     },
     body: blob ? v : JSON.stringify(v),
   });
+  if (r.status === 403) throw Error("Откройте студию через меню трея для нового сеанса.");
   let j = await r.json();
-  if (j.error) throw Error(j.error);
+  if (j.error) throw Error(apiMessage(j.error));
   return j.data;
 }
 function slugURL(s) {
@@ -937,7 +959,31 @@ $("language").onclick = () => {
   localStorage.setItem("framequiz-language", next);
   location.assign(next === "en" ? "/en" : "/");
 };
+async function refreshUpdateStatus() {
+  const states = {
+    checking: "Проверяем релизы GitHub…", current: "Установлена последняя версия.",
+    downloading: "Скачиваем и проверяем новый релиз…", ready: "Обновление готово. Выйдите через меню трея для установки.",
+    auth: "Войдите через gh auth login и проверьте доступ к репозиторию.",
+    cli: "Для обновлений установите GitHub CLI.", failed: "Обновление отложено. Подробности в update-status.txt.",
+    installed: "Обновление установлено."
+  };
+  try {
+    const raw = await api("update-status", {});
+    const [state, version] = raw.split(" ");
+    const message = states[state] || (raw ? states.failed : states.checking);
+    $("updateStatus").textContent = message + (/^v?[0-9]+\.[0-9]+\.[0-9]+$/.test(version || "") ? " (" + version + ")" : "");
+    $("updateBadge").title = message;
+    $("updateBadge").classList.toggle("updateReady", state === "ready");
+  } catch (e) { $("updateStatus").textContent = e.message; }
+}
+$("updateBadge").onclick = () => {
+  $("updatePanel").hidden = !$("updatePanel").hidden;
+  $("updateBadge").setAttribute("aria-expanded", String(!$("updatePanel").hidden));
+  refreshUpdateStatus();
+};
 async function init() {
+  refreshUpdateStatus();
+  setInterval(refreshUpdateStatus, 15000);
   if (state.picture) {
     coverArt = await decodeImage(state.picture);
     $("clearImage").hidden = false;

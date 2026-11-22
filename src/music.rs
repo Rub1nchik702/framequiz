@@ -1,4 +1,5 @@
 use super::{base, cmd, now, number, Result};
+use crate::ffmpeg::FfmpegOutput;
 use serde_json::{json, Value};
 use std::{
     fs,
@@ -119,7 +120,7 @@ fn convert_video(input: &Path, target: &Path) -> Result<()> {
             "+faststart",
         ])
         .arg(target)
-        .output()
+        .limited_output()
         .map_err(error)?;
     if !output.status.success() {
         return Err("Не удалось подготовить MP4 с видео и звуком".into());
@@ -225,7 +226,7 @@ pub fn store_media(
                 "flac",
                 "track.flac",
             ])
-            .output()
+            .limited_output()
             .map_err(error)?;
         if !res.status.success() {
             return Err(
@@ -302,7 +303,7 @@ pub fn waveform(id: &str) -> Result<Value> {
         .args(["-nostdin", "-v", "error", "-i"])
         .arg(dir.join("track.flac"))
         .args(["-ac", "1", "-ar", "4000", "-f", "s16le", "pipe:1"])
-        .output()
+        .limited_output()
         .map_err(error)?;
     if !output.status.success() || output.stdout.is_empty() {
         return Err("Не удалось прочитать звуковую дорожку".into());
@@ -341,7 +342,7 @@ fn pcm(id: &str, offset: u64, seconds: u64) -> Result<Vec<u8>> {
             "pcm_s16le",
             "pipe:1",
         ])
-        .output()
+        .limited_output()
         .map_err(error)?;
     if !res.status.success() || res.stdout.len() != (seconds * BYTES_PER_SEC) as usize {
         return Err("Трек недоступен или отрывок выходит за его границы".into());

@@ -223,5 +223,15 @@
   "Нажмите на дорожку или передвиньте ползунок. Цветом выделен отрывок.": "Click the waveform or drag the slider. The selected clip is highlighted.",
   "Начало отрывка: ": "Clip start: ",
   "Раунд ": "Round ",
-  " · Нет свободного трека с отрывком нужной длины.": " · No unused track has a long enough clip."
+  " · Нет свободного трека с отрывком нужной длины.": " · No unused track has a long enough clip.",
+  "Обновления приложения": "Application updates",
+  "Проверяем релизы GitHub…": "Checking GitHub Releases…",
+  "Установлена последняя версия.": "You are up to date.",
+  "Скачиваем и проверяем новый релиз…": "Downloading and verifying the release…",
+  "Обновление готово. Выйдите через меню трея для установки.": "Update ready. Exit from the tray to install it.",
+  "Войдите через gh auth login и проверьте доступ к репозиторию.": "Sign in with gh auth login and check repository access.",
+  "Для обновлений установите GitHub CLI.": "Install GitHub CLI to receive updates.",
+  "Обновление отложено. Подробности в update-status.txt.": "Update postponed. See update-status.txt for details.",
+  "Обновление установлено.": "Update installed.",
+  "Откройте студию через меню трея для нового сеанса.": "Open the studio from its tray menu to start a new session."
 }

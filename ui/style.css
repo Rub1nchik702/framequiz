@@ -665,3 +665,7 @@ header {
 #waveStart { padding:0; accent-color:var(--peach); }
 #waveAudio { width:100%; }
 .dialog-actions { margin-top:14px; }
+
+#updatePanel {padding:12px 5vw;background:var(--panel,#26242a);color:var(--text,#fff)}
+#updatePanel p {margin:.4em 0}
+#updateBadge.updateReady {outline:2px solid #f58255}

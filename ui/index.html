@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ru">
   <head>
-    <script>if (location.pathname === "/" && localStorage.getItem("framequiz-language") === "en") location.replace("/en");</script>
+    <script>if (/^#[a-f0-9]{64}$/.test(location.hash)) { sessionStorage.setItem("framequiz-session", location.hash.slice(1)); history.replaceState(null,"",location.pathname); } if (location.pathname === "/" && localStorage.getItem("framequiz-language") === "en") location.replace("/en");</script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <link rel="icon" href="/sun.svg" type="image/svg+xml" />
@@ -20,7 +20,7 @@
         ><button data-tab="trends">Тренды</button>
       </nav>
       <button id="language" aria-label="English / Русский">EN / RU</button>
-      <span class="online">v@VERSION@</span
+      <button id="updateBadge" aria-controls="updatePanel" aria-expanded="false">v@VERSION@</button
       ><button
         id="quit"
         title="Завершить работу студии"
@@ -29,6 +29,7 @@
         ⏻
       </button>
     </header>
+    <aside id="updatePanel" hidden><strong>Обновления приложения</strong><p role="status" id="updateStatus"></p></aside>
     <main>
       <section id="studio">
         <div class="intro">
@@ -36,7 +37,7 @@
             <h1>Студия квизов<span>.</span></h1>
             <p>Соберите выпуск и подготовьте его для YouTube.</p>
           </div>
-          <button id="export" class="primary">↑ &nbsp; Экспорт MP4</button>
+          <button id="export" class="primary">↑   Экспорт MP4</button>
         </div>
         <div class="workspace">
           <div class="panel settings">

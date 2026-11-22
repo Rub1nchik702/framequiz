@@ -9,6 +9,7 @@ using Microsoft.Web.WebView2.WinForms;
 
 internal sealed class StudioWindow : Form
 {
+    private static bool Russian { get { return System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru"; } }
     private readonly Uri studio;
 
     private readonly NotifyIcon tray;
@@ -104,7 +105,7 @@ internal sealed class StudioWindow : Form
         }
         catch (Exception e)
         {
-            if (!exiting) MessageBox.Show("Не удалось открыть встроенное окно. Проверьте, установлен ли Microsoft Edge WebView2 Runtime. Студию можно открыть в браузере через меню трея.\n\n" + e.Message,
+            if (!exiting) MessageBox.Show((Russian ? "Не удалось открыть встроенное окно. Проверьте, установлен ли Microsoft Edge WebView2 Runtime. Студию можно открыть в браузере через меню трея." : "Could not open the desktop window. Check that Microsoft Edge WebView2 Runtime is installed, or open the studio in your browser from the tray menu.") + "\n\n" + e.Message,
                 Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }
@@ -142,7 +143,7 @@ internal sealed class StudioWindow : Form
             if (!created) { activation.Set(); return; }
             if (args[1] == "activate")
             {
-                MessageBox.Show("Локальный порт занят. Если открыта предыдущая версия Framequiz, завершите её кнопкой питания и запустите обновление снова.", "Framequiz Studio");
+                MessageBox.Show(Russian ? "Локальный порт занят. Если открыта предыдущая версия Framequiz, завершите её кнопкой питания и запустите обновление снова." : "The local port is in use. Exit the previous instance from the tray and reopen the studio.", "Framequiz Studio");
                 return;
             }
 

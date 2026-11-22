@@ -46,7 +46,7 @@ function switchQuiz(music) {
   if (!music && !state.plan.length) generate().catch((e) => toast(e.message));
 }
 function clipURL(t, seconds) {
-  return "/clip/" + t.id + "/" + t.offset + "/" + seconds;
+  return "/clip/" + t.id + "/" + t.offset + "/" + seconds + "?session=" + (sessionStorage.getItem("framequiz-session") || "");
 }
 function eligible(t, seconds) {
   return t.durationMs >= (t.offset + seconds) * 1000;
@@ -396,11 +396,12 @@ async function uploadTrack(file, meta) {
   ).join("");
   const response = await fetch("/api/import", {
     method: "POST",
-    headers: {"X-Quiz-Studio": "1", "X-Track-Meta": header},
+    headers: {"X-Quiz-Studio": sessionStorage.getItem("framequiz-session") || "", "X-Track-Meta": header},
     body: file,
   });
+  if (response.status === 403) throw Error("Откройте студию через меню трея для нового сеанса.");
   const result = await response.json();
-  if (result.error) throw Error(result.error);
+  if (result.error) throw Error(apiMessage(result.error));
   return result.data;
 }
 

@@ -1,6 +1,31 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 mod anisong;
+mod ffmpeg;
 mod music;
+use ffmpeg::FfmpegOutput;
+use std::sync::OnceLock;
+
+static SESSION: OnceLock<String> = OnceLock::new();
+#[link(name = "bcrypt")]
+extern "system" {
+    fn BCryptGenRandom(
+        algorithm: *mut std::ffi::c_void,
+        buffer: *mut u8,
+        size: u32,
+        flags: u32,
+    ) -> i32;
+}
+fn session() -> &'static str {
+    SESSION.get_or_init(|| {
+        let mut bytes = [0u8; 32];
+        // BCRYPT_USE_SYSTEM_PREFERRED_RNG accepts a null algorithm handle.
+        assert_eq!(
+            unsafe { BCryptGenRandom(std::ptr::null_mut(), bytes.as_mut_ptr(), 32, 2) },
+            0
+        );
+        bytes.iter().map(|b| format!("{b:02x}")).collect()
+    })
+}
 use serde_json::{json, Value};
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -144,6 +169,10 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
     }
     let v: Value = serde_json::from_slice(b).map_err(|_| "Некорректный JSON")?;
     match route {
+        "/api/update-status" => {
+            let text = fs::read_to_string(base().join("update-status.txt")).unwrap_or_default();
+            Ok(json!(text.trim_start_matches('﻿').trim()))
+        }
         "/api/quit" => {
             thread::spawn(|| {
                 thread::sleep(std::time::Duration::from_millis(250));
@@ -356,7 +385,7 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
                 ])
                 .arg(&path)
                 .stdout(Stdio::null())
-                .output()
+                .limited_output()
                 .map_err(|_| "Поместите ffmpeg.exe рядом с программой")?;
             if !o.status.success() {
                 let _ = fs::remove_file(path);
@@ -377,17 +406,22 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
 }
 fn serve(mut s: TcpStream) -> std::io::Result<()> {
     s.set_read_timeout(Some(std::time::Duration::from_secs(30)))?;
-    let mut reader = BufReader::new(s.try_clone()?);
+    let mut buffered = BufReader::new(s.try_clone()?);
+    let mut reader = Read::by_ref(&mut buffered).take(32768);
     let mut line = String::new();
     reader.read_line(&mut line)?;
     let first = line.clone();
     let mut len = 0;
     let mut host = false;
     let mut auth = false;
+    let mut origin_ok = true;
     let mut track_meta = String::new();
     loop {
         line.clear();
-        if reader.read_line(&mut line)? == 0 || line.trim().is_empty() {
+        if reader.read_line(&mut line)? == 0 || reader.limit() == 0 {
+            return Ok(());
+        }
+        if line == "\r\n" {
             break;
         }
         if let Some((k, v)) = line.split_once(':') {
@@ -395,7 +429,8 @@ fn serve(mut s: TcpStream) -> std::io::Result<()> {
                 "x-track-meta" => track_meta = v.trim().to_owned(),
                 "host" => host = v.trim() == crate::host(),
                 "content-length" => len = v.trim().parse().unwrap_or(usize::MAX),
-                "x-quiz-studio" => auth = v.trim() == "1",
+                "x-quiz-studio" => auth = v.trim() == session(),
+                "origin" => origin_ok &= v.trim() == format!("http://{}", crate::host()),
                 _ => (),
             }
         }
@@ -404,9 +439,18 @@ fn serve(mut s: TcpStream) -> std::io::Result<()> {
     if !host || parts.len() < 2 || (len > 8_000_000 && parts[1] != "/api/import") {
         return Ok(());
     }
+    let clip = parts[1].strip_prefix("/clip/");
+    let permitted_clip = clip
+        .and_then(|path| path.split_once("?session="))
+        .filter(|(_, token)| *token == session());
+    if !origin_ok || (parts[0] == "POST" && !auth) || (clip.is_some() && permitted_clip.is_none()) {
+        s.write_all(b"HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")?;
+        return Ok(());
+    }
+    let reader = &mut buffered;
     let (mime, data) = if parts[0] == "POST" && auth {
         let result = if parts[1] == "/api/import" {
-            music::import(&mut reader, len, &track_meta)
+            music::import(reader, len, &track_meta)
         } else {
             let mut b = vec![0; len];
             reader.read_exact(&mut b)?;
@@ -423,7 +467,8 @@ fn serve(mut s: TcpStream) -> std::io::Result<()> {
                 "text/html",
                 include_bytes!(concat!(env!("OUT_DIR"), "/index.html")).to_vec(),
             ),
-            route if route.starts_with("/clip/") => match music::preview(&route[6..]) {
+            route if route.starts_with("/clip/") => match music::preview(permitted_clip.unwrap().0)
+            {
                 Ok(wav) => ("audio/wav", wav),
                 Err(e) => {
                     write!(s,"HTTP/1.1 422 Unprocessable Content\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",e.len(),e)?;
@@ -457,12 +502,29 @@ fn serve(mut s: TcpStream) -> std::io::Result<()> {
     } else {
         return Ok(());
     };
-    write!(s,"HTTP/1.1 200 OK\r\nContent-Type: {mime}; charset=utf-8\r\nContent-Length: {}\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",data.len())?;
+    write!(s,"HTTP/1.1 200 OK\r\nContent-Type: {mime}; charset=utf-8\r\nContent-Length: {}\r\nReferrer-Policy: no-referrer\r\nX-Frame-Options: DENY\r\nX-Content-Type-Options: nosniff\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n",data.len())?;
     s.write_all(&data)
 }
 fn serve_requests(listener: TcpListener) {
     for stream in listener.incoming().flatten() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        static ACTIVE: AtomicUsize = AtomicUsize::new(0);
+        if ACTIVE
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
+                (n < 32).then_some(n + 1)
+            })
+            .is_err()
+        {
+            continue;
+        }
         thread::spawn(move || {
+            struct Slot;
+            impl Drop for Slot {
+                fn drop(&mut self) {
+                    ACTIVE.fetch_sub(1, Ordering::Relaxed);
+                }
+            }
+            let _slot = Slot;
             let _ = serve(stream);
         });
     }
@@ -472,13 +534,14 @@ fn main() {
     let listener = TcpListener::bind(host());
     if args.iter().any(|x| x == "--headless") {
         if let Ok(listener) = listener {
+            println!("http://{}/#{}", host(), session());
             serve_requests(listener);
         }
         return;
     }
     let shell = base().join("window").join("FramequizWindow.exe");
     let mut window = cmd(shell.to_str().unwrap());
-    window.arg(format!("http://{}/", host()));
+    window.arg(format!("http://{}/#{}", host(), session()));
     let running = if let Ok(listener) = listener {
         let updater = base().join("Update-Framequiz.ps1");
         if updater.is_file() {
@@ -516,7 +579,7 @@ fn main() {
     if let Ok(mut child) = window.spawn() {
         let _ = child.wait();
     } else if running {
-        let url = format!("http://{}/", host());
+        let url = format!("http://{}/#{}", host(), session());
         let _ = cmd("rundll32.exe")
             .args(["url.dll,FileProtocolHandler", &url])
             .spawn();
