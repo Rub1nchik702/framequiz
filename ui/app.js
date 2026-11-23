@@ -766,20 +766,21 @@ button("search", async () => {
     b.disabled = false;
   }
 });
-button("export", async () => {
+async function exportEpisode() {
   if (busy || hasDraft()) return;
   busy = true;
   stop();
   let d = $("dialog"),
     s = state.applied,
     id;
-  d.showModal();
+  if (!d.open) d.showModal();
   d.oncancel = (e) => {
     if (busy) e.preventDefault();
   };
-  $("openFolder").hidden = $("closeDialog").hidden = true;
+  $("openFolder").hidden = $("closeDialog").hidden = $("retryExport").hidden = true;
   $("dTitle").textContent = "Экспорт выпуска";
   try {
+    save();
     id = await api("start", {});
     let cv = el("canvas");
     for (let i = 0; i < state.plan.length; i++) {
@@ -788,6 +789,7 @@ button("export", async () => {
           "Подготовка кадров · " + (i + 1) + " / " + state.plan.length;
         paint(cv, i, j ? "answer" : "question");
         let blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92));
+        if (!blob) throw Error("Не удалось подготовить кадр.");
         await api("frame/" + id + "/" + (2 * i + j), blob, true);
       }
     }
@@ -809,11 +811,14 @@ button("export", async () => {
     if (id) await api("cancel", { id }).catch(() => {});
     $("dTitle").textContent = "Ошибка экспорта";
     $("dText").textContent = e.message;
+    $("retryExport").hidden = false;
   } finally {
     busy = false;
     $("closeDialog").hidden = false;
   }
-});
+}
+button("export", exportEpisode);
+button("retryExport", exportEpisode);
 button("closeDialog", () => $("dialog").close());
 button("openFolder", () => api("folder", {}));
 if (window.chrome?.webview) {
@@ -970,7 +975,7 @@ async function refreshUpdateStatus() {
     downloading: "Скачиваем и проверяем новый релиз…", ready: "Обновление готово. Выйдите через меню трея для установки.",
     auth: "Войдите в GitHub в окне обновления.", signedin: "Вход выполнен. Можно обновлять.",
     cli: "Нажмите «Обновить», чтобы войти в GitHub.", failed: "Обновление отложено. Подробности в update-status.txt.",
-    installed: "Обновление установлено."
+    installed: "Обновление установлено.", canceled: "Обновление отменено."
   };
   try {
     const raw = await api("update-status", {});

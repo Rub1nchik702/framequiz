@@ -363,10 +363,13 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
             let out = base().join("exports");
             fs::create_dir_all(&out).map_err(|e| e.to_string())?;
             let path = out.join(format!("Quiz-{id}.mp4"));
+            let pending = out.join(format!(".Quiz-{id}.partial"));
             let ff = base().join("ffmpeg.exe");
             let o = cmd(ff.to_str().ok_or("FFmpeg")?)
                 .current_dir(&dir)
                 .args([
+                    "-nostdin",
+                    "-y",
                     "-hide_banner",
                     "-loglevel",
                     "error",
@@ -396,14 +399,20 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
                     &(round * count).to_string(),
                     "-movflags",
                     "+faststart",
+                    "-f",
+                    "mp4",
                 ])
-                .arg(&path)
+                .arg(&pending)
                 .stdout(Stdio::null())
                 .limited_output()
                 .map_err(|_| "Поместите ffmpeg.exe рядом с программой")?;
             if !o.status.success() {
-                let _ = fs::remove_file(path);
+                let _ = fs::remove_file(&pending);
                 return Err(format!("FFmpeg: {}", String::from_utf8_lossy(&o.stderr)));
+            }
+            if let Err(error) = fs::rename(&pending, &path) {
+                let _ = fs::remove_file(&pending);
+                return Err(error.to_string());
             }
             let _ = fs::remove_dir_all(dir);
             Ok(json!(path.to_string_lossy()))

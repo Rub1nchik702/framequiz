@@ -18,6 +18,7 @@ internal sealed class UpdateWindow : Form {
     readonly Label status=new Label();
     readonly TextBox code=new TextBox();
     readonly CancellationTokenSource cancel=new CancellationTokenSource();
+    bool operationRunning, closeRequested;
     static readonly string Vault=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Framequiz Studio","github.user");
     string L(string russian,string english){return en?english:russian;}
     void Report(string state,string message){
@@ -37,7 +38,12 @@ internal sealed class UpdateWindow : Form {
         logout.Click+=(s,e)=>{File.Delete(Vault);Buttons();status.Text=L("Вы вышли из GitHub.","Signed out of GitHub.");};
         action.Click+=async(s,e)=>await Run();
         Controls.AddRange(new Control[]{status,code,action,logout});
-        FormClosing+=(s,e)=>cancel.Cancel();
+        FormClosing+=(s,e)=>{
+            if(!operationRunning)return;
+            e.Cancel=true;
+            closeRequested=true;
+            cancel.Cancel();
+        };
         Buttons();
     }
     void Buttons(){logout.Visible=File.Exists(Vault);action.Text=logout.Visible?L("Обновить","Update"):L("Войти через GitHub","Sign in with GitHub");}
@@ -72,6 +78,7 @@ internal sealed class UpdateWindow : Form {
         return false;
     }
     async Task Run(){
+        operationRunning=true;
         action.Enabled=logout.Enabled=false;
         string stage=Path.Combine(root,".framequiz-update-"+Guid.NewGuid().ToString("N"));
         bool applying=false;
@@ -84,7 +91,7 @@ internal sealed class UpdateWindow : Form {
             var token=Encoding.UTF8.GetString(ProtectedData.Unprotect(File.ReadAllBytes(Vault),null,DataProtectionScope.CurrentUser));
             Directory.CreateDirectory(stage);
             Report("downloading",L("Проверяем версию и скачиваем обновление…","Checking the release and downloading the update…"));
-            string tag=await ReleaseClient.Download(token,stage,version);
+            string tag=await ReleaseClient.Download(token,stage,version,cancel.Token);
             cancel.Token.ThrowIfCancellationRequested();
             if(tag==null || ReleaseClient.Hash(Path.Combine(root,"Framequiz.exe"))==ReleaseClient.Hash(Path.Combine(stage,"new","Framequiz.exe"))){
                 Report("current",L("Установлена последняя версия.","You are up to date."));return;
@@ -104,11 +111,14 @@ internal sealed class UpdateWindow : Form {
             if(e.GetType()==typeof(LoginExpiredException)){File.Delete(Vault);Report("auth",L("Сеанс истёк. Войдите снова.","Session expired. Sign in again."));}
             else Report("failed",e.Message);
         }catch(CryptographicException){File.Delete(Vault);Report("auth",L("Войдите в GitHub снова.","Please sign in again."));}
-        catch(OperationCanceledException){if(!IsDisposed)status.Text=L("Операция отменена.","Operation canceled.");}
+        catch(OperationCanceledException){Report("canceled",L("Операция отменена.","Operation canceled."));}
+        catch(TimeoutException){Report("failed",L("GitHub не успел ответить. Нажмите «Обновить», чтобы повторить.","GitHub timed out. Click Update to retry."));}
         catch(Exception e){Report("failed",e.Message=="access"?L("У аккаунта нет доступа к релизу. Примите приглашение в репозиторий или смените аккаунт.","Release access denied. Accept your repository invitation or switch accounts."):e.Message);}
         finally{
             if(!applying && Directory.Exists(stage))try{Directory.Delete(stage,true);}catch(IOException){}
+            operationRunning=false;
             if(!IsDisposed){action.Enabled=logout.Enabled=true;code.Visible=false;Buttons();}
+            if(closeRequested && !IsDisposed)Close();
         }
     }
     [STAThread] static void Main(string[] args){

@@ -9,6 +9,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
@@ -42,10 +43,24 @@ public sealed class ReleaseClient {
         using(var file=File.OpenRead(path))using(var sha=SHA256.Create())
             return BitConverter.ToString(sha.ComputeHash(file)).Replace("-","").ToLowerInvariant();
     }
-    public static async Task<string> Download(string token,string stage,string installed) {
+    public static Task<string> Download(string token,string stage,string installed) {
+        return Download(token,stage,installed,CancellationToken.None);
+    }
+    public static async Task<string> Download(string token,string stage,string installed,CancellationToken cancellation) {
+        using(var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation)) {
+            deadline.CancelAfter(TimeSpan.FromMinutes(4));
+            try {
+                return await DownloadRelease(token,stage,installed,deadline.Token);
+            } catch(OperationCanceledException) {
+                if(cancellation.IsCancellationRequested) throw;
+                throw new TimeoutException("GitHub release download timed out.");
+            }
+        }
+    }
+    static async Task<string> DownloadRelease(string token,string stage,string installed,CancellationToken cancellation) {
         Dictionary<string,object> release;
         using(var req=Request(Api+"/releases/latest",token,"application/vnd.github+json"))
-        using(var res=await Http.SendAsync(req)) {
+        using(var res=await Http.SendAsync(req,cancellation)) {
             if(res.StatusCode==HttpStatusCode.Unauthorized)throw new LoginExpiredException();
             if(res.StatusCode==HttpStatusCode.NotFound || res.StatusCode==HttpStatusCode.Forbidden)throw new ApplicationException("access");
             res.EnsureSuccessStatusCode();
@@ -64,7 +79,7 @@ public sealed class ReleaseClient {
         string url=Api+"/releases/assets/"+Convert.ToInt64(asset["id"]);
         for(int hop=0;hop<4;hop++) {
             using(var req=Request(url,hop==0?token:null,"application/octet-stream"))
-            using(var res=await Http.SendAsync(req,HttpCompletionOption.ResponseHeadersRead)) {
+            using(var res=await Http.SendAsync(req,HttpCompletionOption.ResponseHeadersRead,cancellation)) {
                 if((int)res.StatusCode>=300 && (int)res.StatusCode<400) {
                     var next=res.Headers.Location;
                     if(next==null || !next.IsAbsoluteUri || next.Scheme!="https" || !next.IsDefaultPort ||
@@ -73,17 +88,28 @@ public sealed class ReleaseClient {
                     url=next.AbsoluteUri;continue;
                 }
                 res.EnsureSuccessStatusCode();
+                using(cancellation.Register(res.Dispose))
                 using(var stream=await res.Content.ReadAsStreamAsync())using(var file=File.Create(zip)) {
                     var buf=new byte[65536];int n;long total=0;
-                    while((n=await stream.ReadAsync(buf,0,buf.Length))!=0) {
-                        total+=n;if(total>size)throw new InvalidDataException("Unexpected download size");
-                        await file.WriteAsync(buf,0,n);
+                    try {
+                        while((n=await stream.ReadAsync(buf,0,buf.Length,cancellation))!=0) {
+                            total+=n;if(total>size)throw new InvalidDataException("Unexpected download size");
+                            await file.WriteAsync(buf,0,n,cancellation);
+                        }
+                    } catch(IOException) {
+                        cancellation.ThrowIfCancellationRequested();
+                        throw;
+                    } catch(ObjectDisposedException) {
+                        cancellation.ThrowIfCancellationRequested();
+                        throw;
                     }
+                    cancellation.ThrowIfCancellationRequested();
                     if(total!=size)throw new InvalidDataException("Incomplete download");
                 }
                 break;
             }
         }
+        cancellation.ThrowIfCancellationRequested();
         if("sha256:"+Hash(zip)!=digest)throw new InvalidDataException("SHA-256 mismatch");
         Extract(zip,Path.Combine(stage,"new"));
         return tag;
