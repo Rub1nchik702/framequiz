@@ -76,10 +76,19 @@ def build_window(staging, sdk):
     references = [sdk / "lib/net462" / ("Microsoft.Web.WebView2." + part + ".dll")
                   for part in ("Core", "WinForms")]
     compiler = (Path(os.environ["WINDIR"]) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe")
+    updater = staging / "Framequiz-Update.exe"
+    subprocess.run([str(compiler), "/nologo", "/target:winexe", "/platform:x64", "/optimize+",
+                    "/out:" + str(updater), "/reference:System.Windows.Forms.dll","/reference:System.Drawing.dll",
+                    "/reference:System.Net.Http.dll","/reference:System.IO.Compression.dll",
+                    "/reference:System.IO.Compression.FileSystem.dll","/reference:System.Security.dll",
+                    "/reference:System.Web.Extensions.dll",str(ROOT/"tools/ReleaseClient.cs"),
+                    str(ROOT/"tools/UpdateWindow.cs")],check=True)
+    embed_sun(updater)
     executable = window / "FramequizWindow.exe"
     subprocess.run([str(compiler), "/nologo", "/target:winexe", "/platform:x64",
                     "/optimize+", "/out:" + str(executable),
                     "/reference:System.Drawing.dll", "/reference:System.Windows.Forms.dll",
+                    "/resource:" + str(updater) + ",Framequiz.Update",
                     *("/reference:" + str(dll) for dll in references),
                     str(ROOT / "tools/StudioWindow.cs")], check=True)
     embed_sun(executable)
@@ -109,6 +118,7 @@ def main():
             for path in (staging / "window").iterdir():
                 output.write(path, "window/" + path.name)
         shutil.copytree(staging / "window", DIST / "window", dirs_exist_ok=True)
+        shutil.copyfile(staging / "Framequiz-Update.exe", DIST / "Framequiz-Update.exe")
         archive.replace(DIST / archive.name)
         shutil.copyfile(ROOT / "README.md", DIST / "README.md")
         executable.replace(DIST / executable.name)

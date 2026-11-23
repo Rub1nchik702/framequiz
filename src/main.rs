@@ -169,6 +169,20 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
     }
     let v: Value = serde_json::from_slice(b).map_err(|_| "Некорректный JSON")?;
     match route {
+        "/api/update-open" => {
+            let lang = if v["language"] == "en" { "en" } else { "ru" };
+            let helper = base().join("window").join("FramequizWindow.exe");
+            cmd(helper.to_str().ok_or("Window path")?)
+                .args([
+                    "--update",
+                    env!("CARGO_PKG_VERSION"),
+                    &std::process::id().to_string(),
+                    lang,
+                ])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            Ok(json!(true))
+        }
         "/api/update-status" => {
             let text = fs::read_to_string(base().join("update-status.txt")).unwrap_or_default();
             Ok(json!(text.trim_start_matches('﻿').trim()))
@@ -543,27 +557,6 @@ fn main() {
     let mut window = cmd(shell.to_str().unwrap());
     window.arg(format!("http://{}/#{}", host(), session()));
     let running = if let Ok(listener) = listener {
-        let updater = base().join("Update-Framequiz.ps1");
-        if updater.is_file() {
-            let powershell = std::path::PathBuf::from(
-                std::env::var_os("SystemRoot").unwrap_or_else(|| "C:\\Windows".into()),
-            )
-            .join("System32/WindowsPowerShell/v1.0/powershell.exe");
-            let _ = cmd(powershell.to_str().unwrap())
-                .args([
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "RemoteSigned",
-                    "-File",
-                ])
-                .arg(updater)
-                .arg("-StudioPid")
-                .arg(std::process::id().to_string())
-                .arg("-CurrentVersion")
-                .arg(env!("CARGO_PKG_VERSION"))
-                .spawn();
-        }
         thread::spawn(move || serve_requests(listener));
         window.arg(std::process::id().to_string());
         true

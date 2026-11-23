@@ -233,5 +233,11 @@
   "Для обновлений установите GitHub CLI.": "Install GitHub CLI to receive updates.",
   "Обновление отложено. Подробности в update-status.txt.": "Update postponed. See update-status.txt for details.",
   "Обновление установлено.": "Update installed.",
-  "Откройте студию через меню трея для нового сеанса.": "Open the studio from its tray menu to start a new session."
+  "Откройте студию через меню трея для нового сеанса.": "Open the studio from its tray menu to start a new session.",
+  "Обновить": "Update",
+  "Дождитесь окончания экспорта.": "Wait for the export to finish.",
+  "Войдите в GitHub в окне обновления.": "Sign in to GitHub in the update window.",
+  "Вход выполнен. Можно обновлять.": "Signed in. You can now update.",
+  "Нажмите «Обновить», чтобы войти в GitHub.": "Click Update to sign in to GitHub.",
+  "Нажмите «Обновить», чтобы проверить релиз.": "Click Update to check for a release."
 }

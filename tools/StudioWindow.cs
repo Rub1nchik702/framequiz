@@ -37,11 +37,14 @@ internal sealed class StudioWindow : Form
         tray = new NotifyIcon { Text = Text, Icon = Icon, ContextMenuStrip = menu, Visible = true };
         tray.MouseClick += (s, e) => { if (e.Button == MouseButtons.Left) Restore(); };
         var process = Process.GetProcessById(backend);
+        var updateExit = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Framequiz.Update." + backend);
+        var updateWait = ThreadPool.RegisterWaitForSingleObject(updateExit, (s,t) => Dispatch(ExitStudio),null,Timeout.Infinite,false);
         process.EnableRaisingEvents = true;
         process.Exited += (s, e) => Dispatch(ExitStudio);
         var registration = ThreadPool.RegisterWaitForSingleObject(
             activation, (s, expired) => Dispatch(Restore), null, Timeout.Infinite, false);
         FormClosed += (s, e) => {
+            updateWait.Unregister(null); updateExit.Dispose();
             registration.Unregister(null);
             process.Dispose();
             tray.Visible = false;
@@ -134,6 +137,28 @@ internal sealed class StudioWindow : Form
     [STAThread]
     private static void Main(string[] args)
     {
+        if (args.Length == 4 && args[0] == "--update") {
+            var root = Directory.GetParent(Path.GetDirectoryName(Application.ExecutablePath)).FullName;
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Framequiz Studio","Updater",new Version(args[1]).ToString());
+            Directory.CreateDirectory(dir);
+            var exe = Path.Combine(dir,"Framequiz-Update.exe");
+            string pending=Path.Combine(dir,Guid.NewGuid().ToString("N")+".tmp");
+            try {
+                using(var input=typeof(StudioWindow).Assembly.GetManifestResourceStream("Framequiz.Update"))
+                using(var output=File.Create(pending)) input.CopyTo(output);
+                if(!File.Exists(exe)) File.Move(pending,exe);
+                else {
+                    using(var sha=System.Security.Cryptography.SHA256.Create())
+                    using(var expected=File.OpenRead(pending))
+                    using(var actual=File.OpenRead(exe))
+                        if(!string.Equals(Convert.ToBase64String(sha.ComputeHash(expected)),Convert.ToBase64String(sha.ComputeHash(actual)))) throw new IOException("Updater integrity check failed.");
+                }
+            } finally {if(File.Exists(pending))File.Delete(pending);}
+            var start = new ProcessStartInfo(exe, "\"" + root + "\" " + args[1] + " " + args[2] + " " + args[3]);
+            start.UseShellExecute=false;
+            Process.Start(start);
+            return;
+        }
         if (args.Length != 3) return;
         var studio = new Uri(args[0]);
         var name = @"Local\FramequizStudio.Open." + studio.Port;

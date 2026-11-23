@@ -17,7 +17,9 @@ Framequiz Studio turns anime openings, endings and trivia questions into timed q
 
 ## Updates from this private repository
 
-Each user needs access to this repository. Install [GitHub CLI](https://cli.github.com/), run `gh auth login --hostname github.com` once, and sign in with your own account. Then launch Framequiz normally. Starting with version **0.2.0**, the desktop client checks GitHub Releases at startup, downloads a newer stable Windows ZIP and checks its SHA-256 against GitHub's asset digest. Exit the studio from the tray to install it. The next launch uses the new version. See **update-status.txt** beside the EXE for the result. Without GitHub CLI or repository access, you can continue using the installed version.
+Accept the repository invitation using your own GitHub account. In Framequiz 0.2.2 or later, click the version in the header and choose **Update → Sign in with GitHub**. Enter the displayed code on GitHub in your browser and authorize Framequiz Desktop Updates 702. Return to the updater and click **Update**. It verifies the release digest, installs the files, and reopens the studio. The access token is protected for your Windows user with DPAPI. Use **Sign out** to remove it, or sign in again when the session expires.
+
+**Upgrading from 0.2.1 without GitHub CLI:** download **Framequiz-Update.exe** from Releases, exit the old studio via its tray menu, and double-click the updater. Select the existing Framequiz.exe when prompted. Your tracks, exported videos and drafts are kept.
 
 To publish the next release, update the package version in **Cargo.toml** and its matching entry in **Cargo.lock**, commit the changes to main, then select **Actions → Publish Windows release → Run workflow**. The job builds the code, reuses the packaged FFmpeg from the previous release and publishes a new version tag and ZIP. User media, exports and WebView2 drafts are stored separately.
 
@@ -26,3 +28,4 @@ Click the version in the header for live update status. A per-launch session pro
 ## Development
 
 Run `cargo build --release --locked` on Windows. To package, place ffmpeg.exe and FFmpeg-COPYING.txt in dist, unpack the Microsoft.Web.WebView2 NuGet SDK, and run `python tools/package.py --webview-sdk PATH_TO_SDK`. Use audio and video you have permission to publish. Open Trivia DB questions are licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The Windows distribution includes the FFmpeg license.
+

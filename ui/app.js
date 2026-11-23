@@ -959,18 +959,23 @@ $("language").onclick = () => {
   localStorage.setItem("framequiz-language", next);
   location.assign(next === "en" ? "/en" : "/");
 };
+$("openUpdater").onclick = run(async () => {
+  if (busy) throw Error("Дождитесь окончания экспорта.");
+  save();
+  await api("update-open",{language:document.documentElement.lang});
+});
 async function refreshUpdateStatus() {
   const states = {
     checking: "Проверяем релизы GitHub…", current: "Установлена последняя версия.",
     downloading: "Скачиваем и проверяем новый релиз…", ready: "Обновление готово. Выйдите через меню трея для установки.",
-    auth: "Войдите через gh auth login и проверьте доступ к репозиторию.",
-    cli: "Для обновлений установите GitHub CLI.", failed: "Обновление отложено. Подробности в update-status.txt.",
+    auth: "Войдите в GitHub в окне обновления.", signedin: "Вход выполнен. Можно обновлять.",
+    cli: "Нажмите «Обновить», чтобы войти в GitHub.", failed: "Обновление отложено. Подробности в update-status.txt.",
     installed: "Обновление установлено."
   };
   try {
     const raw = await api("update-status", {});
     const [state, version] = raw.split(" ");
-    const message = states[state] || (raw ? states.failed : states.checking);
+    const message = states[state] || (raw ? states.failed : "Нажмите «Обновить», чтобы проверить релиз.");
     $("updateStatus").textContent = message + (/^v?[0-9]+\.[0-9]+\.[0-9]+$/.test(version || "") ? " (" + version + ")" : "");
     $("updateBadge").title = message;
     $("updateBadge").classList.toggle("updateReady", state === "ready");

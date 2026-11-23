@@ -1,5 +1,9 @@
 name: Publish Windows release
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['Cargo.toml']
 permissions:
   contents: write
 concurrency: framequiz-windows-release
@@ -30,9 +34,14 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
           "version=$version" >> $env:GITHUB_OUTPUT
-          gh release create "v$version" dist/Framequiz-Windows.zip --target $env:GITHUB_SHA --title "Framequiz Studio $version" --generate-notes
+          gh release create "v$version" dist/Framequiz-Windows.zip dist/Framequiz-Update.exe --target $env:GITHUB_SHA --title "Framequiz Studio $version" --generate-notes
 
       - name: Verify the actual 0.2.0 client upgrade
         if: steps.publish.outputs.version == '0.2.1'
         shell: pwsh
         run: ./tools/Test-Upgrade020.ps1 -PreviousZip previous/Framequiz-Windows.zip -NewZip dist/Framequiz-Windows.zip
+
+      - name: Verify graphical updater from released 0.2.1 without GitHub CLI
+        if: steps.publish.outputs.version == '0.2.2'
+        shell: powershell
+        run: ./tools/Test-Upgrade021.ps1 -PreviousZip previous/Framequiz-Windows.zip -NewZip dist/Framequiz-Windows.zip -Updater dist/Framequiz-Update.exe
