@@ -231,6 +231,8 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
         ),
         "/api/video-folder" => music::open_video(v["id"].as_str().ok_or("ID")?),
         "/api/amq-scores" => anisong::import_scores(&v),
+        "/api/download-failures" => anisong::failures(),
+        "/api/download-retry" => anisong::retry(v["id"].as_u64().ok_or("ID трека")?),
         "/api/download-tracks" => {
             let kind = v["kind"]
                 .as_str()
@@ -243,7 +245,7 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
             if !(1..=60).contains(&counts.iter().sum::<usize>()) {
                 return Err("Выберите от 1 до 60 треков".into());
             }
-            Ok(json!(anisong::select(kind, counts, 2)?))
+            anisong::download(kind, counts)
         }
         "/api/tracks" => music::list(),
         "/api/waveform" => music::waveform(v["id"].as_str().ok_or("ID трека")?),

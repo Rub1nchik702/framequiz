@@ -49,14 +49,17 @@ fn download_video(song: &Value) -> Option<Vec<u8>> {
     None
 }
 
-fn verified_score(song: &Value, index: &Value) -> Option<f64> {
+fn verified_key(song: &Value) -> Option<String> {
     score_key(
         &song["annId"],
         &song["songName"],
         &song["songArtist"],
         &song["songType"],
     )
-    .and_then(|k| index[k].as_f64())
+}
+
+fn verified_score(song: &Value, index: &Value) -> Option<f64> {
+    verified_key(song).and_then(|k| index[k].as_f64())
 }
 
 pub fn browse(kind: &str) -> Result<Value> {
@@ -108,6 +111,7 @@ pub fn pick(id: u64, offset: u64) -> Result<Value> {
         "ED"
     };
     let cached = music::list()?;
+    save_attempt(&song, false)?;
     let t = prepare(
         cached.as_array().unwrap(),
         &song,
@@ -118,6 +122,7 @@ pub fn pick(id: u64, offset: u64) -> Result<Value> {
         2,
     )
     .ok_or("Не удалось скачать или преобразовать видео выбранного трека")?;
+    save_attempt(&song, true)?;
     music::set_offset(t["id"].as_str().ok_or("ID")?, offset)
 }
 
@@ -186,15 +191,16 @@ fn prepare(
 ) -> Option<Value> {
     let anime = anime_name(song)?.trim();
     let title = song["songName"].as_str()?.trim();
+    let key = verified_key(song);
     let mut track = cached
         .iter()
         .find(|track| {
             track["source"] == "anisongdb"
-                && track["sourceFile"] == file
-                && track["anime"] == anime
-                && track["title"] == title
                 && track["kind"] == kind
-                && track["durationMs"].as_u64().unwrap_or(0) >= clip * 1000
+                && (track["sourceFile"] == file
+                    || key
+                        .as_ref()
+                        .is_some_and(|key| identity(track).as_deref() == Some(key.as_str())))
         })
         .cloned();
     let mut fields = json!({
@@ -231,6 +237,25 @@ fn prepare(
         ^ now();
     track["offset"] = json!(earliest + seed % (latest - earliest + 1));
     Some(track)
+}
+
+pub fn identity(track: &Value) -> Option<String> {
+    if track["source"] != "anisongdb" {
+        return None;
+    }
+    score_key(
+        &track["annId"],
+        &track["title"],
+        &track["artist"],
+        &track["version"],
+    )
+    .or_else(|| {
+        Some(format!(
+            "{}:{}",
+            track["kind"].as_str()?,
+            track["sourceFile"].as_str()?
+        ))
+    })
 }
 
 fn score_key(ann: &Value, title: &Value, artist: &Value, version: &Value) -> Option<String> {
@@ -312,9 +337,99 @@ pub fn import_scores(rows: &Value) -> Result<Value> {
     Ok(json!({"imported":imported,"matched":matched}))
 }
 
+fn retry_dir() -> std::path::PathBuf {
+    super::base().join("tracks").join("download-retry")
+}
+
+fn save_attempt(song: &Value, complete: bool) -> Result<()> {
+    let id = song["amqSongId"].as_u64().ok_or("ID")?;
+    let folder = retry_dir();
+    let path = folder.join(format!("{id}.json"));
+    if complete {
+        return match std::fs::remove_file(path) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e.to_string()),
+        };
+    }
+    std::fs::create_dir_all(&folder).map_err(|e| e.to_string())?;
+    let temp = folder.join(format!("{id}.tmp"));
+    std::fs::write(&temp, song.to_string())
+        .and_then(|_| std::fs::rename(temp, path))
+        .map_err(|e| e.to_string())
+}
+
+pub fn failures() -> Result<Value> {
+    let mut rows = Vec::new();
+    let entries = match std::fs::read_dir(retry_dir()) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(json!(rows)),
+        Err(e) => return Err(e.to_string()),
+    };
+    for entry in entries {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        if path.extension().and_then(|v| v.to_str()) != Some("json") {
+            continue;
+        }
+        let song: Value = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
+        rows.push(json!({"id":song["amqSongId"],"anime":anime_name(&song),"title":song["songName"],"version":song["songType"]}));
+    }
+    Ok(json!(rows))
+}
+
+pub fn retry(id: u64) -> Result<Value> {
+    let _guard = DOWNLOADS
+        .try_lock()
+        .map_err(|_| "Загрузка уже выполняется")?;
+    let path = retry_dir().join(format!("{id}.json"));
+    let song: Value = serde_json::from_slice(&std::fs::read(path).map_err(|e| e.to_string())?)
+        .map_err(|e| e.to_string())?;
+    let verified = verified_score(&song, &scores()?);
+    let score = verified
+        .or_else(|| song["songDifficulty"].as_f64())
+        .ok_or("Сложность")?;
+    let kind = if song["songType"]
+        .as_str()
+        .unwrap_or("")
+        .starts_with("Opening")
+    {
+        "OP"
+    } else {
+        "ED"
+    };
+    let cached = music::list()?;
+    let track = prepare(
+        cached.as_array().unwrap(),
+        &song,
+        song["audio"].as_str().ok_or("Источник")?,
+        kind,
+        level_of(score),
+        verified,
+        2,
+    )
+    .ok_or("Не удалось скачать или преобразовать видео выбранного трека")?;
+    save_attempt(&song, true)?;
+    Ok(track)
+}
+
 pub fn select(kind: &str, counts: [usize; 3], clip: u64) -> Result<Vec<Value>> {
+    Ok(select_tracks(kind, counts, clip, false)?.0)
+}
+
+pub fn download(kind: &str, counts: [usize; 3]) -> Result<Value> {
+    let (tracks, shortages) = select_tracks(kind, counts, 2, true)?;
+    Ok(json!({"tracks":tracks,"shortages":shortages}))
+}
+
+fn select_tracks(
+    kind: &str,
+    counts: [usize; 3],
+    clip: u64,
+    batch_mode: bool,
+) -> Result<(Vec<Value>, Vec<String>)> {
     if counts == [0; 3] {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), Vec::new()));
     }
     let _download = DOWNLOADS
         .try_lock()
@@ -324,6 +439,7 @@ pub fn select(kind: &str, counts: [usize; 3], clip: u64) -> Result<Vec<Value>> {
     let cached = cached.as_array().unwrap();
     let mut used_files = HashSet::new();
     let mut result = Vec::new();
+    let mut shortages = Vec::new();
     for (i, wanted) in counts.into_iter().enumerate() {
         if wanted == 0 {
             continue;
@@ -334,14 +450,9 @@ pub fn select(kind: &str, counts: [usize; 3], clip: u64) -> Result<Vec<Value>> {
         let mut available = songs
             .iter()
             .filter_map(|song| {
-                let verified = score_key(
-                    &song["annId"],
-                    &song["songName"],
-                    &song["songArtist"],
-                    &song["songType"],
-                )
-                .and_then(|k| index[k].as_f64());
+                let verified = verified_score(song, &index);
                 let score = verified.or_else(|| song["songDifficulty"].as_f64())?;
+                song["amqSongId"].as_u64()?;
                 let file = song["audio"].as_str()?;
                 let stem = file.strip_suffix(".mp3")?;
                 if video_files(song).next().is_none()
@@ -361,38 +472,58 @@ pub fn select(kind: &str, counts: [usize; 3], clip: u64) -> Result<Vec<Value>> {
                     || !stem
                         .bytes()
                         .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
-                    || !used_files.insert(file.to_owned())
+                    || !used_files.insert(verified_key(song).unwrap_or_else(|| file.to_owned()))
                 {
                     return None;
                 }
                 Some((song, file, verified))
             })
-            .take(wanted + 9);
+            .take(if batch_mode { wanted } else { wanted + 9 });
         let mut ready = 0;
         while ready < wanted {
             let batch: Vec<_> = available.by_ref().take((wanted - ready).min(3)).collect();
             if batch.is_empty() {
                 break;
             }
+            if batch_mode {
+                for (song, _, _) in &batch {
+                    save_attempt(song, false)?;
+                }
+            }
             let prepared = thread::scope(|scope| {
                 batch
                     .into_iter()
                     .map(|(song, file, verified)| {
-                        scope
-                            .spawn(move || prepare(cached, song, file, kind, level, verified, clip))
+                        (
+                            song,
+                            scope.spawn(move || {
+                                prepare(cached, song, file, kind, level, verified, clip)
+                            }),
+                        )
                     })
                     .collect::<Vec<_>>()
                     .into_iter()
-                    .filter_map(|worker| worker.join().ok().flatten())
+                    .map(|(song, worker)| (song, worker.join().ok().flatten()))
                     .collect::<Vec<_>>()
             });
-            ready += prepared.len();
-            result.extend(prepared);
+            for (song, track) in prepared {
+                if track.is_some() {
+                    save_attempt(song, true)?;
+                }
+                if let Some(track) = track {
+                    ready += 1;
+                    result.push(track);
+                }
+            }
         }
         if ready < wanted {
             let name = ["легко", "средне", "сложно"][i];
-            return Err(format!("AnisongDB · {name}: удалось загрузить {ready} из {wanted} треков {kind} с отрывком {clip} с. Повторите сборку или уменьшите число раундов."));
+            let message = format!("AnisongDB · {name}: удалось загрузить {ready} из {wanted} треков {kind} с отрывком {clip} с. Повторите сборку или уменьшите число раундов.");
+            if !batch_mode {
+                return Err(message);
+            }
+            shortages.push(message);
         }
     }
-    Ok(result)
+    Ok((result, shortages))
 }

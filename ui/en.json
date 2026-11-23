@@ -242,5 +242,8 @@
   "Войдите в GitHub в окне обновления.": "Sign in to GitHub in the update window.",
   "Вход выполнен. Можно обновлять.": "Signed in. You can now update.",
   "Нажмите «Обновить», чтобы войти в GitHub.": "Click Update to sign in to GitHub.",
-  "Нажмите «Обновить», чтобы проверить релиз.": "Click Update to check for a release."
+  "Нажмите «Обновить», чтобы проверить релиз.": "Click Update to check for a release.",
+  "Не скачались": "Failed downloads",
+  "Повторить загрузки с ошибкой": "Retry failed downloads",
+  "Скачано повторно: ": "Retried successfully: "
 }

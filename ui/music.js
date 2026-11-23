@@ -89,8 +89,17 @@ function musicSettings() {
     input.classList.toggle("shortage", input.value > available);
   }
 }
+let failedDownloads = [];
+async function reloadDownloadFailures() {
+  failedDownloads = await api("download-failures", {});
+  $("failedTracks").replaceChildren(...failedDownloads.map(track =>
+    el("li", [track.anime, track.title, track.version].filter(Boolean).join(" · "))
+  ));
+  $("failedDownloads").hidden = !failedDownloads.length;
+}
 async function reloadTracks() {
   tracks = await api("tracks", {});
+  await reloadDownloadFailures();
   $("trackCount").textContent = tracks.length + " тр.";
   const list = $("trackList");
   list.replaceChildren();
@@ -168,6 +177,30 @@ function selectTrack(track, origin) {
   }
 }
 function initDownloads() {
+  $("retryDownloads").onclick = run(async () => {
+    const pending = [...failedDownloads];
+    const status = $("retryDownloadReport");
+    $("retryDownloads").disabled = $("downloadMusic").disabled = true;
+    let completed = 0;
+    const errors = [];
+    try {
+      for (const track of pending) {
+        status.textContent = "Загрузка " + track.title + "…";
+        try {
+          await api("download-retry", {id: track.id});
+          completed++;
+        } catch (error) {
+          errors.push(track.title + " — " + error.message);
+        }
+      }
+      await reloadTracks();
+      const message = "Скачано повторно: " + completed + " / " + pending.length;
+      status.textContent = [message, ...errors].join(" · ");
+      toast(message);
+    } finally {
+      $("retryDownloads").disabled = $("downloadMusic").disabled = false;
+    }
+  });
   $("clearPick").onclick = () => selectTrack(null);
   $("browseKind").onchange = () => { $("videoChoices").replaceChildren(); $("browseStatus").textContent = ""; };
   $("browseVideos").onclick = run(async () => {
@@ -211,7 +244,7 @@ function initDownloads() {
     if (total < 1 || total > 60) {status.textContent = "Выберите от 1 до 60 треков."; return;}
     const before = new Set(tracks.map(t => t.id)), messages = [];
     let reused = 0;
-    $("downloadMusic").disabled = true;
+    $("downloadMusic").disabled = $("retryDownloads").disabled = true;
     try {
       for (const [kind, quota] of groups) {
         for (const [level, count] of Object.entries(quota)) {
@@ -219,13 +252,14 @@ function initDownloads() {
           status.textContent = "Загрузка " + kind + " · " + levels[level] + "…";
           try {
             const picked = await api("download-tracks", {kind, quota:{easy:0, medium:0, hard:0, [level]:count}});
-            reused += picked.filter(t => before.has(t.id)).length;
+            reused += picked.tracks.filter(t => before.has(t.id)).length;
+            messages.push(...picked.shortages.map(apiMessage));
           } catch (e) { messages.push(e.message); }
         }
       }
       await reloadTracks();
       status.textContent = ["Добавлено: " + tracks.filter(t => !before.has(t.id)).length, "уже в фонотеке: " + reused, ...messages].join(" · ");
-    } finally { $("downloadMusic").disabled = false; }
+    } finally { $("downloadMusic").disabled = $("retryDownloads").disabled = false; }
   });
   $("amqExport").onchange = run(async () => {
     const file = $("amqExport").files[0];
@@ -305,7 +339,7 @@ function initMusic() {
           selectTrack(saved,"library");
           $("importStatus").textContent = catalog ? "Сохранено: " + saved.videoFile : "Изменения сохранены.";
         }
-      } catch(e) { $("importStatus").textContent = e.message; }
+      } catch(e) { $("importStatus").textContent = e.message; await reloadDownloadFailures(); }
       finally { $("importTrack").disabled = false; }
       return;
     }

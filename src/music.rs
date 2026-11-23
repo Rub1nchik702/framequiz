@@ -23,6 +23,17 @@ fn track_path(id: &str) -> Result<PathBuf> {
 fn error(e: std::io::Error) -> String {
     e.to_string()
 }
+fn audio_identity(track: &Value, path: &Path) -> Option<String> {
+    let mut header = [0u8; 42];
+    fs::File::open(path).ok()?.read_exact(&mut header).ok()?;
+    if &header[..4] != b"fLaC" || header[26..42].iter().all(|&b| b == 0) {
+        return None;
+    }
+    Some(json!([track["kind"], format!("{:02x?}", &header[18..42])]).to_string())
+}
+
+static IMPORT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 pub fn list() -> Result<Value> {
     let mut tracks = Vec::new();
     fs::create_dir_all(root()).map_err(error)?;
@@ -40,6 +51,24 @@ pub fn list() -> Result<Value> {
         let bytes = fs::read(p.join("track.json")).map_err(error)?;
         tracks.push(serde_json::from_slice::<Value>(&bytes).map_err(|e| e.to_string())?);
     }
+    tracks.sort_by_key(|t| {
+        (
+            !t["videoFile"].is_string(),
+            std::cmp::Reverse(t["id"].as_str().unwrap_or("").to_owned()),
+        )
+    });
+    let mut sources = std::collections::HashSet::new();
+    let mut audio = std::collections::HashSet::new();
+    tracks.retain(|t| {
+        if let Some(key) = super::anisong::identity(t) {
+            return sources.insert(key);
+        }
+        let fingerprint = t["id"]
+            .as_str()
+            .and_then(|id| track_path(id).ok())
+            .and_then(|path| audio_identity(t, &path.join("track.flac")));
+        fingerprint.is_none_or(|key| audio.insert(key))
+    });
     tracks.sort_by(|a, b| b["id"].as_str().cmp(&a["id"].as_str()));
     Ok(json!(tracks))
 }
@@ -253,12 +282,29 @@ pub fn store_media(
             convert_video(&input, &tmp.join(&name))?;
             meta["videoFile"] = json!(name);
         }
+        let _import = IMPORT_LOCK.lock().map_err(|_| "Ошибка записи карточки")?;
+        if meta["source"].is_null() {
+            if let Some(key) = audio_identity(&meta, &tmp.join("track.flac")) {
+                let tracks = list()?;
+                for track in tracks
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .filter(|t| t["source"].is_null())
+                {
+                    let path = track_path(track["id"].as_str().ok_or("ID трека")?)?;
+                    if audio_identity(track, &path.join("track.flac")).as_ref() == Some(&key) {
+                        return Ok(track.clone());
+                    }
+                }
+            }
+        }
         fs::remove_file(input).map_err(error)?;
         fs::write(tmp.join("track.json"), meta.to_string()).map_err(error)?;
         fs::rename(&tmp, track_path(&id)?).map_err(error)?;
         Ok(meta)
     })();
-    if result.is_err() {
+    if tmp.exists() {
         let _ = fs::remove_dir_all(&tmp);
     }
     result
