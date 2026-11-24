@@ -171,7 +171,7 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
         } else {
             return Err("Некорректный кадр".into());
         };
-        if n >= 5000 {
+        if n >= 20000 {
             return Err("Некорректный кадр".into());
         }
         fs::write(job(id)?.join(format!("{n}.{ext}")), b).map_err(|e| e.to_string())?;
@@ -275,6 +275,7 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
             anisong::download(kind, counts)
         }
         "/api/tracks" => music::list(),
+        "/api/track-delete" => music::delete(v["id"].as_str().ok_or("ID трека")?),
         "/api/open-tracks" => music::open_tracks(),
         "/api/shikimori" => music::shikimori(v["id"].as_str().ok_or("ID трека")?),
         "/api/export-progress" => {
