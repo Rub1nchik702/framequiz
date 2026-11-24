@@ -86,6 +86,76 @@ pub fn browse(kind: &str) -> Result<Value> {
     Ok(json!(rows))
 }
 
+/// OP/ED of an anime by name (partial match, so sequels of the franchise are included).
+pub fn songs_of(name: &str) -> Result<Value> {
+    let name = name.trim();
+    if name.is_empty() || name.chars().count() > 200 {
+        return Err("Название аниме".into());
+    }
+    let query = json!({
+        "anime_search_filter": {"search": name, "partial_match": true},
+        "song_name_search_filter": {"search": "", "partial_match": true},
+        "artist_search_filter": {"search": "", "partial_match": true, "group_granularity": 0, "max_other_artist": 99},
+        "composer_search_filter": {"search": "", "partial_match": true},
+        "and_logic": false, "ignore_duplicate": false,
+        "opening_filter": true, "ending_filter": true, "insert_filter": false
+    });
+    let mut songs = post_json("search_request", &query)?;
+    songs.retain(|s| {
+        video_files(s).next().is_some()
+            && s["audio"].is_string()
+            && s["songDifficulty"].is_number()
+            && s["amqSongId"].is_u64()
+    });
+    songs.retain(|s| {
+        s["songType"]
+            .as_str()
+            .is_some_and(|t| t.starts_with("Opening") || t.starts_with("Ending"))
+    });
+    songs.truncate(80);
+    let index = scores()?;
+    let mut rows = Vec::new();
+    for s in &songs {
+        let verified = verified_score(s, &index);
+        let score = verified.or_else(|| s["songDifficulty"].as_f64()).ok_or("Сложность")?;
+        let kind = if s["songType"].as_str().unwrap_or("").starts_with("Opening") { "OP" } else { "ED" };
+        rows.push(json!({"id": s["amqSongId"], "anime": anime_name(s), "title": s["songName"],
+            "artist": s["songArtist"], "kind": kind, "version": s["songType"],
+            "level": level_of(score), "amqDifficulty": score, "verified": verified.is_some(),
+            "malId": s["linked_ids"]["myanimelist"], "vintage": s["animeVintage"]}));
+    }
+    *BROWSE.lock().map_err(|_| "Каталог занят")? = songs;
+    Ok(json!(rows))
+}
+
+static LEVEL_IDS: Mutex<Vec<(String, Vec<u64>)>> = Mutex::new(Vec::new());
+
+/// MAL ids of anime that have an OP/ED of the given AMQ difficulty (a random sample of up to 500 songs each).
+/// shortcut: sample, not the whole database; `refresh` draws a new sample.
+pub fn level_ids(level: &str, refresh: bool) -> Result<Vec<u64>> {
+    let i = LEVELS.iter().position(|l| *l == level).ok_or("Сложность")?;
+    let mut cache = LEVEL_IDS.lock().map_err(|_| "Каталог занят")?;
+    if let Some(pos) = cache.iter().position(|(l, _)| l == level) {
+        if !refresh {
+            return Ok(cache[pos].1.clone());
+        }
+        cache.remove(pos);
+    }
+    let (start, end) = RANGES[i];
+    let mut ids = Vec::new();
+    for kind in ["OP", "ED"] {
+        for song in catalog(kind, 500, start, end)? {
+            if let Some(id) = song["linked_ids"]["myanimelist"].as_u64() {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+        }
+    }
+    cache.push((level.to_owned(), ids.clone()));
+    Ok(ids)
+}
+
 pub fn pick(id: u64, offset: u64) -> Result<Value> {
     let _guard = DOWNLOADS
         .try_lock()
@@ -144,6 +214,10 @@ fn catalog(kind: &str, n: usize, start: u64, end: u64) -> Result<Vec<Value>> {
             "media_links": {"require_all": ["audio"]}
         }
     });
+    post_json("get_n_random_songs", &query)
+}
+
+fn post_json(endpoint: &str, query: &Value) -> Result<Vec<Value>> {
     let mut request = cmd("curl.exe")
         .args([
             "-q",
@@ -158,7 +232,7 @@ fn catalog(kind: &str, n: usize, start: u64, end: u64) -> Result<Vec<Value>> {
             "Content-Type: application/json",
             "--data-binary",
             "@-",
-            "https://anisongdb.com/api/get_n_random_songs",
+            &format!("https://anisongdb.com/api/{endpoint}"),
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -205,7 +279,7 @@ fn prepare(
         .cloned();
     let mut fields = json!({
         "level": level, "artist": song["songArtist"], "version": song["songType"],
-        "annId": song["annId"], "catalogDifficulty": song["songDifficulty"],
+        "annId": song["annId"], "vintage": song["animeVintage"], "catalogDifficulty": song["songDifficulty"],
         "amqDifficulty": verified.map_or_else(|| song["songDifficulty"].clone(), |v| json!(v)),
         "verified": verified.is_some(), "checkedAt": now()
     });
@@ -235,7 +309,8 @@ fn prepare(
         .ok()?
         .wrapping_mul(7919)
         ^ now();
-    track["offset"] = json!(earliest + seed % (latest - earliest + 1));
+    let random = earliest + seed % (latest - earliest + 1);
+    track["offset"] = json!(music::peak_offset(track["id"].as_str()?, clip).unwrap_or(random));
     Some(track)
 }
 

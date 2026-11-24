@@ -2,6 +2,8 @@
 mod anisong;
 mod ffmpeg;
 mod music;
+mod render;
+mod shiki;
 use ffmpeg::FfmpegOutput;
 use std::sync::OnceLock;
 
@@ -161,10 +163,18 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
     if let Some(rest) = route.strip_prefix("/api/frame/") {
         let (id, n) = rest.split_once('/').ok_or("Кадр")?;
         let n: usize = n.parse().map_err(|_| "Кадр")?;
-        if n >= 120 || !b.starts_with(&[255, 216]) {
+        // JPEG для сцен, PNG (с прозрачностью) для подписи поверх видео.
+        let ext = if b.starts_with(&[255, 216]) {
+            "jpg"
+        } else if b.starts_with(&[0x89, b'P', b'N', b'G']) {
+            "png"
+        } else {
+            return Err("Некорректный кадр".into());
+        };
+        if n >= 5000 {
             return Err("Некорректный кадр".into());
         }
-        fs::write(job(id)?.join(format!("{n}.jpg")), b).map_err(|e| e.to_string())?;
+        fs::write(job(id)?.join(format!("{n}.{ext}")), b).map_err(|e| e.to_string())?;
         return Ok(json!(true));
     }
     let v: Value = serde_json::from_slice(b).map_err(|_| "Некорректный JSON")?;
@@ -225,10 +235,27 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
                 .map_err(|_| "Источник должен использовать UTF-8")?))
         }
         "/api/music-catalog" => anisong::browse(v["kind"].as_str().ok_or("Тип")?),
-        "/api/music-pick" => anisong::pick(
-            v["id"].as_u64().ok_or("ID")?,
-            number(&v, "offset", 0, 3598)?,
-        ),
+        "/api/music-pick" => {
+            let track = anisong::pick(v["id"].as_u64().ok_or("ID")?, number(&v, "offset", 0, 3598)?)?;
+            let id = track["id"].as_str().ok_or("ID трека")?;
+            if let Some(shiki_id) = v["shikiId"].as_u64() {
+                let _ = shiki::attach(id, shiki_id); // метаданные необязательны: видео уже скачано
+            }
+            if v["autoPeak"] == true {
+                if let Ok(at) = music::peak_offset(id, 10) {
+                    let _ = music::set_offset(id, at);
+                }
+            }
+            music::list()?
+                .as_array()
+                .and_then(|l| l.iter().find(|t| t["id"] == id).cloned())
+                .ok_or_else(|| "Трек не найден".to_string())
+        }
+        "/api/shiki-list" => shiki::list(&v),
+        "/api/cover-find" => shiki::cover_find(v["id"].as_u64().ok_or("ID")?),
+        "/api/cover-full" => music::cover_full(v["id"].as_str().ok_or("ID трека")?),
+        "/api/shiki-genres" => shiki::genres(),
+        "/api/anime-songs" => anisong::songs_of(v["name"].as_str().ok_or("Название")?),
         "/api/video-folder" => music::open_video(v["id"].as_str().ok_or("ID")?),
         "/api/amq-scores" => anisong::import_scores(&v),
         "/api/download-failures" => anisong::failures(),
@@ -248,6 +275,31 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
             anisong::download(kind, counts)
         }
         "/api/tracks" => music::list(),
+        "/api/open-tracks" => music::open_tracks(),
+        "/api/shikimori" => music::shikimori(v["id"].as_str().ok_or("ID трека")?),
+        "/api/export-progress" => {
+            let text = fs::read_to_string(job(v["id"].as_str().ok_or("ID")?)?.join("progress.txt"))
+                .unwrap_or_default();
+            let micros = text
+                .lines()
+                .rev()
+                .find_map(|l| l.strip_prefix("out_time_us=")?.trim().parse::<f64>().ok())
+                .unwrap_or(0.0);
+            let dir = job(v["id"].as_str().ok_or("ID")?)?;
+            let finished: f64 = fs::read_to_string(dir.join("done.txt"))
+                .ok()
+                .and_then(|t| t.trim().parse().ok())
+                .unwrap_or(0.0);
+            Ok(json!(finished + micros / 1e6))
+        }
+        "/api/track-ru" => music::set_ru(
+            v["id"].as_str().ok_or("ID трека")?,
+            v["ru"].as_str().ok_or("Название")?,
+        ),
+        "/api/peak" => Ok(json!(music::peak_offset(
+            v["id"].as_str().ok_or("ID трека")?,
+            number(&v, "seconds", 1, 60)?,
+        )?)),
         "/api/waveform" => music::waveform(v["id"].as_str().ok_or("ID трека")?),
         "/api/track-offset" => music::set_offset(
             v["id"].as_str().ok_or("ID трека")?,
@@ -342,75 +394,63 @@ fn api(route: &str, b: &[u8]) -> Result<Value> {
         "/api/export" => {
             let id = v["id"].as_str().ok_or("ID")?;
             let dir = job(id)?;
-            let count = number(&v, "count", 1, 60)?;
-            let round = number(&v, "round", 4, 60)?;
-            let reveal = number(&v, "reveal", 1, round - 1)?;
-            if count * round > 600 {
-                return Err("Максимум 10 минут".into());
-            }
-            let mut list = String::new();
-            for i in 0..count * 2 {
-                list += &format!(
-                    "file '{i}.jpg'\nduration {}\n",
-                    if i % 2 == 0 { round - reveal } else { reveal }
-                )
-            }
-            list += &format!("file '{}.jpg'\n", count * 2 - 1);
-            fs::write(dir.join("frames.txt"), list).map_err(|e| e.to_string())?;
-            if v["clips"].is_null() {
-                soundtrack(&dir.join("audio.wav"), count, round, reveal)?
-            } else {
-                music::soundtrack(&dir.join("audio.wav"), &v["clips"], count, round, reveal)?
-            }
             let out = base().join("exports");
             fs::create_dir_all(&out).map_err(|e| e.to_string())?;
             let path = out.join(format!("Quiz-{id}.mp4"));
             let pending = out.join(format!(".Quiz-{id}.partial"));
-            let ff = base().join("ffmpeg.exe");
-            let o = cmd(ff.to_str().ok_or("FFmpeg")?)
-                .current_dir(&dir)
-                .args([
-                    "-nostdin",
-                    "-y",
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-f",
-                    "concat",
-                    "-safe",
-                    "1",
-                    "-i",
-                    "frames.txt",
-                    "-i",
-                    "audio.wav",
-                    "-vf",
-                    "fps=24,format=yuv420p",
-                    "-c:v",
-                    "libx264",
-                    "-preset",
-                    "veryfast",
-                    "-threads",
-                    "3",
-                    "-crf",
-                    "22",
-                    "-c:a",
-                    "aac",
-                    "-b:a",
-                    if v["clips"].is_null() { "64k" } else { "160k" },
-                    "-t",
-                    &(round * count).to_string(),
-                    "-movflags",
-                    "+faststart",
-                    "-f",
-                    "mp4",
-                ])
-                .arg(&pending)
-                .stdout(Stdio::null())
-                .limited_output()
-                .map_err(|_| "Поместите ffmpeg.exe рядом с программой")?;
-            if !o.status.success() {
-                let _ = fs::remove_file(&pending);
-                return Err(format!("FFmpeg: {}", String::from_utf8_lossy(&o.stderr)));
+            if let Some(rounds) = v["timeline"].as_array() {
+                if rounds.is_empty() || rounds.len() > 60 {
+                    return Err("В таймлайне от 1 до 60 раундов".into());
+                }
+                let result = render::timeline(
+                    &dir,
+                    rounds,
+                    &v,
+                    number(&v, "width", 320, 3840)? / 2 * 2,
+                    number(&v, "height", 320, 3840)? / 2 * 2,
+                    &pending,
+                );
+                if let Err(e) = result {
+                    let _ = fs::remove_file(&pending);
+                    return Err(e);
+                }
+            } else {
+                let count = number(&v, "count", 1, 60)?;
+                let round = number(&v, "round", 4, 60)?;
+                let reveal = number(&v, "reveal", 1, round - 1)?;
+                if count * round > 600 {
+                    return Err("Максимум 10 минут".into());
+                }
+                let mut list = String::new();
+                for i in 0..count * 2 {
+                    let seconds = if i % 2 == 0 { round - reveal } else { reveal };
+                    list += &format!("file '{i}.jpg'\nduration {seconds}\n");
+                }
+                list += &format!("file '{}.jpg'\n", count * 2 - 1);
+                fs::write(dir.join("frames.txt"), list).map_err(|e| e.to_string())?;
+                if v["clips"].is_null() {
+                    soundtrack(&dir.join("audio.wav"), count, round, reveal)?
+                } else {
+                    music::soundtrack(&dir.join("audio.wav"), &v["clips"], count, round, reveal)?
+                }
+                let o = cmd(base().join("ffmpeg.exe").to_str().ok_or("FFmpeg")?)
+                    .current_dir(&dir)
+                    .args([
+                        "-nostdin", "-y", "-hide_banner", "-loglevel", "error", "-progress", "progress.txt",
+                        "-f", "concat", "-safe", "1", "-i", "frames.txt", "-i", "audio.wav",
+                        "-vf", "fps=24,format=yuv420p", "-c:v", "libx264", "-preset", "veryfast",
+                        "-threads", "3", "-crf", "22", "-c:a", "aac", "-b:a",
+                        if v["clips"].is_null() { "64k" } else { "160k" },
+                        "-t", &(round * count).to_string(), "-movflags", "+faststart", "-f", "mp4",
+                    ])
+                    .arg(&pending)
+                    .stdout(Stdio::null())
+                    .limited_output()
+                    .map_err(|_| "Поместите ffmpeg.exe рядом с программой")?;
+                if !o.status.success() {
+                    let _ = fs::remove_file(&pending);
+                    return Err(format!("FFmpeg: {}", String::from_utf8_lossy(&o.stderr)));
+                }
             }
             if let Err(error) = fs::rename(&pending, &path) {
                 let _ = fs::remove_file(&pending);

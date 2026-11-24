@@ -191,7 +191,7 @@ document.querySelectorAll("[data-tab]").forEach(
   (b) =>
     (b.onclick = () => {
       stop();
-      for (let id of ["studio", "library", "trends", "tracks"])
+      for (let id of ["studio", "library", "trends", "tracks", "catalog", "board", "design", "timeline"])
         $(id).hidden = id !== b.dataset.tab;
       document
         .querySelectorAll("[data-tab]")
@@ -200,6 +200,10 @@ document.querySelectorAll("[data-tab]").forEach(
       if (b.dataset.tab === "tracks")
         reloadTracks().catch((e) => toast(e.message));
       if (b.dataset.tab === "library") library();
+      if (b.dataset.tab === "catalog") openCatalog().catch((e) => toast(e.message));
+      if (b.dataset.tab === "board") openBoard().catch((e) => toast(e.message));
+      if (b.dataset.tab === "design") openDesign().catch((e) => toast(e.message));
+      if (b.dataset.tab === "timeline") openTimeline().catch((e) => toast(e.message));
     }),
 );
 function shuffle(a) {
@@ -244,6 +248,7 @@ async function generate() {
   refresh();
 }
 function stop() {
+  if (typeof tlStop === "function") tlStop();
   stopRoundAudio();
   clearInterval(timer);
   timer = 0;
@@ -362,7 +367,7 @@ function art(c, w, h, p) {
 function fitted(c, text, x, y, maxW, maxH, size, weight, color) {
   let lines = [];
   for (; size >= 8; size -= 2) {
-    c.font = weight + " " + size + 'px "Segoe UI", Arial, sans-serif';
+    c.font = weight + " " + size + "px " + (window.designFont || '"Segoe UI", Arial, sans-serif');
     lines = [""];
     for (let word of text.split(/\s+/)) {
       let i = lines.length - 1,
@@ -419,7 +424,9 @@ function paint(canvas, index, m, isCover = false) {
   let label =
     m === "cover"
       ? "QUIZ CHALLENGE"
-      : m === "answer"
+      : m === "intro"
+        ? "ROUND " + String(index + 1).padStart(2, "0")
+        : m === "answer"
         ? "ANSWER REVEAL"
         : "QUESTION " +
           String(index + 1).padStart(2, "0") +
@@ -441,7 +448,9 @@ function paint(canvas, index, m, isCover = false) {
       : musical
         ? m === "answer"
           ? q.anime
-          : "GUESS THE ANIME"
+          : m === "intro"
+            ? "WHAT ANIME?"
+            : "GUESS THE ANIME"
         : m === "answer"
           ? q.a
           : q.q;
@@ -459,7 +468,7 @@ function paint(canvas, index, m, isCover = false) {
   if (musical && m !== "cover") {
     fitted(
       c,
-      m === "answer" ? q.title : "LISTEN TO THE " + kindName,
+      m === "answer" ? q.title : m === "intro" ? "GET READY" : "LISTEN TO THE " + kindName,
       w * 0.5,
       h * 0.819,
       w * 0.84,
@@ -563,8 +572,48 @@ button("png", () => {
   a.download = "framequiz-thumbnail.png";
   a.click();
 });
+// Число раундов и квоты следуют за планом; прочие неприменённые настройки не трогаем.
+function syncCount(plan) {
+  const next = { count: plan.length };
+  if (isMusic()) {
+    next.quota = newQuota();
+    for (const kind in next.quota)
+      for (const level in next.quota[kind]) next.quota[kind][level] = 0;
+    for (const t of plan) next.quota[t.kind][t.level]++;
+  }
+  if (!roundTime({ ...state.applied, count: next.count }))
+    throw Error("Для этой длительности такое число раундов недоступно.");
+  for (const k in next) {
+    cfg[k] = structuredClone(next[k]);
+    state.applied[k] = structuredClone(next[k]);
+  }
+}
+function movePlan(from, to) {
+  if (from === to || !state.plan[from] || !state.plan[to]) return;
+  stop();
+  const [item] = state.plan.splice(from, 1);
+  state.plan.splice(to, 0, item);
+  idx = to;
+  save();
+  refresh();
+}
+function removeRound(i) {
+  if (state.plan.length < 2) return toast("В плане должен остаться хотя бы один раунд");
+  stop();
+  const next = state.plan.filter((_, n) => n !== i);
+  try {
+    syncCount(next);
+  } catch (e) {
+    return toast(e.message);
+  }
+  state.plan = next;
+  idx = Math.min(idx, next.length - 1);
+  save();
+  refresh();
+}
 function refresh() {
   mark();
+  $("addRound").hidden = !(state.applied?.quiz === "music" && state.plan.length);
   draw();
   $("rounds").replaceChildren();
   let s = state.applied;
@@ -589,7 +638,26 @@ function refresh() {
       setMode("question");
       $("frame").scrollIntoView({ block: "center", behavior: "smooth" });
     };
-    row.append(num);
+    const grip = el("span", "⠿");
+    grip.className = "grip";
+    grip.draggable = true;
+    grip.title = "Перетащите, чтобы поменять раунд местами";
+    grip.ondragstart = (e) => {
+      e.dataTransfer.setData("text/plain", String(i));
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setDragImage(row, 0, 0);
+    };
+    row.ondragover = (e) => {
+      e.preventDefault();
+      row.classList.add("over");
+    };
+    row.ondragleave = () => row.classList.remove("over");
+    row.ondrop = (e) => {
+      e.preventDefault();
+      const from = Number(e.dataTransfer.getData("text/plain"));
+      if (Number.isInteger(from)) movePlan(from, i);
+    };
+    row.append(grip, num);
     for (let k of s.quiz === "music" ? ["anime", "title"] : ["q", "a"]) {
       let inp = el("input");
       inp.value = q[k];
@@ -612,8 +680,25 @@ function refresh() {
       };
       row.append(inp);
     }
+    if (s.quiz === "music") {
+      const ru = el("input");
+      ru.value = q.ru || "";
+      ru.maxLength = 160;
+      ru.placeholder = "Русское название";
+      ru.setAttribute("aria-label", "Русское название " + (i + 1));
+      ru.onchange = run(async () => {
+        q.ru = ru.value.trim();
+        await api("track-ru", { id: q.id, ru: q.ru });
+        save();
+      });
+      row.append(ru);
+    }
     row.append(el("small", (q.kind ? q.kind + " · " : "") + levels[q.level]));
     if (s.quiz === "music") row.append(roundActions(q, i, s));
+    const drop = el("button", "×");
+    drop.title = "Убрать раунд";
+    drop.onclick = () => removeRound(i);
+    row.append(drop);
     if (s.quiz !== "music" && q.source) {
       let a = el("a", "↗");
       a.href = slugURL(q.source);
@@ -693,6 +778,24 @@ button("addQ", () => {
   library();
   toast("Вопрос добавлен в каталог");
 });
+button("addBulk", () => {
+  const known = new Set([...bank, ...state.custom].map((q) => q.q.toLowerCase()));
+  let added = 0;
+  for (const line of $("bulkQ").value.split("\n")) {
+    const cut = line.lastIndexOf("|");
+    const q = line.slice(0, cut).trim(),
+      a = line.slice(cut + 1).trim();
+    if (cut < 0 || !q || !a || q.length > 240 || a.length > 120 || known.has(q.toLowerCase())) continue;
+    known.add(q.toLowerCase());
+    state.custom.push({ q, a, cat: $("manualCat").value, level: $("manualLevel").value, source: "" });
+    added++;
+  }
+  if (!added) throw Error("Не нашлось строк вида «вопрос | ответ». Новые вопросы не добавлены.");
+  save();
+  $("bulkQ").value = "";
+  library();
+  toast("Добавлено вопросов: " + added);
+});
 button("fetchQ", async () => {
   let b = $("fetchQ");
   b.disabled = true;
@@ -766,8 +869,10 @@ button("search", async () => {
     b.disabled = false;
   }
 });
+let exportMode = "plan";
 async function exportEpisode() {
-  if (busy || hasDraft()) return;
+  const tlMode = exportMode === "timeline";
+  if (busy || (!tlMode && hasDraft())) return;
   busy = true;
   stop();
   let d = $("dialog"),
@@ -779,31 +884,51 @@ async function exportEpisode() {
   };
   $("openFolder").hidden = $("closeDialog").hidden = $("retryExport").hidden = true;
   $("dTitle").textContent = "Экспорт выпуска";
+  const bar = $("dBar");
+  bar.hidden = false;
+  bar.value = 0;
+  let poll = 0;
   try {
     save();
     id = await api("start", {});
     let cv = el("canvas");
-    for (let i = 0; i < state.plan.length; i++) {
-      for (let j = 0; j < 2; j++) {
-        $("dText").textContent =
-          "Подготовка кадров · " + (i + 1) + " / " + state.plan.length;
-        paint(cv, i, j ? "answer" : "question");
-        let blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92));
-        if (!blob) throw Error("Не удалось подготовить кадр.");
-        await api("frame/" + id + "/" + (2 * i + j), blob, true);
+    let payload, total;
+    if (tlMode) {
+      const { total: seconds, ...rest } = await timelineFrames(id, bar, cv);
+      total = seconds;
+      payload = { id, ...rest };
+    } else {
+      for (let i = 0; i < state.plan.length; i++) {
+        for (let j = 0; j < 2; j++) {
+          bar.value = (0.3 * (2 * i + j)) / (2 * state.plan.length); // кадры — первые 30%
+          $("dText").textContent = "Подготовка кадров · " + (i + 1) + " / " + state.plan.length;
+          paint(cv, i, j ? "answer" : "question");
+          let blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92));
+          if (!blob) throw Error("Не удалось подготовить кадр.");
+          await api("frame/" + id + "/" + (2 * i + j), blob, true);
+        }
       }
+      total = roundTime(s) * state.plan.length;
+      payload = {
+        id,
+        clips: s.quiz === "music" ? state.plan.map(({ id, offset }) => ({ id, offset })) : null,
+        count: state.plan.length,
+        round: roundTime(s),
+        reveal: reveal(s),
+      };
     }
-    $("dText").textContent = "Кодирование видео H.264 и звуковой дорожки AAC…";
-    let path = await api("export", {
-      id,
-      clips:
-        s.quiz === "music"
-          ? state.plan.map(({ id, offset }) => ({ id, offset }))
-          : null,
-      count: state.plan.length,
-      round: roundTime(s),
-      reveal: reveal(s),
-    });
+    bar.value = 0.3;
+    $("dText").textContent = tlMode ? "Сборка раундов…" : "Сборка звука…";
+    poll = setInterval(async () => {
+      const seconds = await api("export-progress", { id }).catch(() => 0);
+      if (!seconds) return;
+      const done = Math.min(1, seconds / total);
+      bar.value = 0.3 + 0.7 * done;
+      $("dText").textContent = "Кодирование видео H.264 и AAC · " + Math.round(done * 100) + "%";
+    }, 700);
+    let path = await api("export", payload);
+    clearInterval(poll);
+    bar.value = 1;
     $("dTitle").textContent = "Ролик готов";
     $("dText").textContent = path;
     $("openFolder").hidden = false;
@@ -813,11 +938,15 @@ async function exportEpisode() {
     $("dText").textContent = e.message;
     $("retryExport").hidden = false;
   } finally {
+    clearInterval(poll);
     busy = false;
     $("closeDialog").hidden = false;
   }
 }
-button("export", exportEpisode);
+button("export", () => {
+  exportMode = "plan";
+  return exportEpisode();
+});
 button("retryExport", exportEpisode);
 button("closeDialog", () => $("dialog").close());
 button("openFolder", () => api("folder", {}));
@@ -1008,5 +1137,6 @@ async function init() {
   else refresh();
   library();
   await reloadTracks();
+  document.querySelector('[data-tab="catalog"]').click();
 }
 init().catch((e) => toast(e.message));
