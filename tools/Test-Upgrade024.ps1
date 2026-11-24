@@ -129,7 +129,10 @@ public static class ReleasedUpdateButton {
                 using (var form = (Form)constructor.Invoke(new object[] { installation, "0.2.4", parent, true }))
                 using (var watchdog = new System.Windows.Forms.Timer { Interval = 240000 }) {
                     var button = (Button)type.GetField("action", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(form);
-                    if (button.Text != "Update") throw new InvalidOperationException("No authenticated Update button.");
+                    var vault = (string)type.GetField("Vault", BindingFlags.NonPublic | BindingFlags.Static).GetValue(null);
+                    if (!System.IO.File.Exists(vault)) throw new InvalidOperationException("Missing CI sign-in.");
+                    // 0.2.4 can show the sign-in label before its parent form is visible.
+                    // The released click handler chooses its action from the saved sign-in.
                     form.Shown += (sender, args) => form.BeginInvoke(new Action(button.PerformClick));
                     watchdog.Tick += (sender, args) => { watchdog.Stop(); form.Close(); };
                     var status = (Label)type.GetField("status", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(form);
