@@ -32,10 +32,30 @@ $encrypted = [Security.Cryptography.ProtectedData]::Protect(
 Remove-Item Env:GH_TOKEN
 
 $env:FRAMEQUIZ_PORT = '39793'
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=19222'
 $exe = Join-Path $installed Framequiz.exe
-$old = Start-Process $exe -PassThru
+$old = Start-Process $exe -ArgumentList '--tray' -PassThru
+$edgeProcess = $null
 try {
+    # Use the supported browser interface against the already running desktop backend.
+    $deadline = (Get-Date).AddSeconds(25)
+    $sessionUrl = $null
+    do {
+        foreach ($window in Get-CimInstance Win32_Process -Filter "ParentProcessId=$($old.Id)") {
+            if ($window.CommandLine -match 'http://127\.0\.0\.1:39793/#([a-f0-9]{64})') {
+                $sessionUrl = $Matches[0]
+                break
+            }
+        }
+        if (!$sessionUrl) { Start-Sleep -Milliseconds 500 }
+    } until ($sessionUrl -or $old.HasExited -or (Get-Date) -gt $deadline)
+    if (!$sessionUrl) { throw 'Desktop backend did not launch its window.' }
+    $edge = Join-Path ${env:ProgramFiles(x86)} 'Microsoft/Edge/Application/msedge.exe'
+    if (!(Test-Path $edge)) { throw 'Microsoft Edge is missing on the test runner.' }
+    $profile = Join-Path $test 'edge'
+    $edgeProcess = Start-Process $edge -ArgumentList @(
+        '--headless=new', '--disable-gpu', '--no-first-run', '--remote-debugging-port=19222',
+        ('--user-data-dir="' + $profile + '"'), $sessionUrl
+    ) -PassThru
     $driver = Join-Path $test 'click-update.cjs'
     @"
 const assert = require('node:assert/strict');
@@ -44,13 +64,13 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   let tabs;
   for (let i = 0; i < 90; i++) {
     try {
-      tabs = await (await fetch('http://localhost:19222/json/list')).json();
+      tabs = await (await fetch('http://127.0.0.1:19222/json/list')).json();
       if (tabs.some(tab => tab.url.startsWith('http://127.0.0.1:39793/'))) break;
     } catch {}
     await sleep(500);
   }
   const tab = tabs?.find(candidate => candidate.url.startsWith('http://127.0.0.1:39793/'));
-  assert(tab, 'WebView2 did not open the 0.2.4 editor');
+  assert(tab, 'Edge did not open the 0.2.4 editor');
   const ws = new WebSocket(tab.webSocketDebuggerUrl);
   try {
     await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
@@ -141,5 +161,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
     } finally { if (!$probe.HasExited) { $probe.Kill() } }
 
     Write-Output 'Clicked Update in 0.2.4 and in its graphical updater. Installed the published 2.5.0 package. Existing FLAC and metadata hashes match, the track is playable, and exports remain present.'
-} finally { if (!$old.HasExited) { $old.Kill() } }
+} finally {
+    if ($edgeProcess -and !$edgeProcess.HasExited) { $edgeProcess.Kill() }
+    if (!$old.HasExited) { $old.Kill() }
+}
 
