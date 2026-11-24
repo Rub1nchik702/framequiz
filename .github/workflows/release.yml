@@ -34,7 +34,7 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $version = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages[0].version
           "version=$version" >> $env:GITHUB_OUTPUT
-          gh release create "v$version" dist/Framequiz-Windows.zip dist/Framequiz-Update.exe --target $env:GITHUB_SHA --title "Framequiz Studio $version" --generate-notes
+          gh release create "v$version" dist/Framequiz-Windows.zip dist/Framequiz-Update.exe --target $env:GITHUB_SHA --title "Framequiz Studio $version" --generate-notes --latest
 
       - name: Verify the actual 0.2.0 client upgrade
         if: steps.publish.outputs.version == '0.2.1'

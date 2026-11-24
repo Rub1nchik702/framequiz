@@ -1,0 +1,29 @@
+name: Verify upgrade from 0.2.4
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/Test-Upgrade024.ps1'
+      - '.github/workflows/verify-upgrade-024.yml'
+permissions:
+  contents: read
+jobs:
+  upgrade:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download released Windows archives
+        run: |
+          gh release download v0.2.4 --pattern Framequiz-Windows.zip --dir old
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          gh release download v2.5.0 --pattern Framequiz-Windows.zip --dir new
+      - name: Click Update and verify the existing library
+        shell: powershell
+        run: ./tools/Test-Upgrade024.ps1 -PreviousZip old/Framequiz-Windows.zip -NewZip new/Framequiz-Windows.zip

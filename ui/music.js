@@ -969,6 +969,11 @@ async function openBoard() {
   tracks = await api("tracks", {});
   renderBoard();
 }
+function displayAnime(track) {
+  return document.documentElement.lang === "en"
+    ? track.anime || track.ru
+    : track.ru || track.anime;
+}
 function trackCard(t) {
   const card = el("div");
   card.className = "lib-card";
@@ -983,9 +988,9 @@ function trackCard(t) {
   const chip = el("em", tagOf(t));
   chip.className = "chip " + (t.kind || "").toLowerCase();
   const sub = el("small");
-  sub.append(chip, " " + t.title + (t.vintage ? " · " + t.vintage : "") + (t.ru ? " · " + t.anime : ""));
+  sub.append(chip, " " + t.title + (t.vintage ? " · " + t.vintage : "") + (t.ru && document.documentElement.lang !== "en" ? " · " + t.anime : ""));
   const text = el("span");
-  text.append(el("b", t.ru ? t.ru : t.anime), sub);
+  text.append(el("b", displayAnime(t)), sub);
   card.append(img, text);
   return card;
 }
@@ -2531,7 +2536,7 @@ function renderStage() {
   if (lead) cardBlock("Интро", 0, lead);
   tl.rounds.forEach((r, i) => {
     const t = trackOf(r), x = starts[i] * z, selected = i === tl.sel ? " sel" : "";
-    const hdr = el("div", "Round " + (i + 1) + " · " + tagOf(t) + " · " + (t.ru || t.anime));
+    const hdr = el("div", "Round " + (i + 1) + " · " + tagOf(t) + " · " + displayAnime(t));
     hdr.className = "tl-round" + selected;
     place(hdr, x, rlen(r) * z);
     hdr.onpointerdown = (e) => roundDown(e, i, hdr);
@@ -2668,7 +2673,7 @@ function renderInspector() {
     return;
   }
   const t = trackOf(r);
-  const title = el("h3", "Round " + (tl.sel + 1) + " · " + (t.ru || t.anime));
+  const title = el("h3", "Round " + (tl.sel + 1) + " · " + displayAnime(t));
   const chip = el("em", tagOf(t));
   chip.className = "chip " + (t.kind || "").toLowerCase();
   const sub = el("small");
@@ -2721,7 +2726,7 @@ function renderInspector() {
   });
   const swap = el("select");
   swap.setAttribute("aria-label", "Заменить трек");
-  swap.append(new Option("Заменить трек…", ""), ...tracks.filter((x) => x.id !== r.id).map((x) => new Option(tagOf(x) + " · " + (x.ru || x.anime) + " · " + x.title, x.id)));
+  swap.append(new Option("Заменить трек…", ""), ...tracks.filter((x) => x.id !== r.id).map((x) => new Option(tagOf(x) + " · " + displayAnime(x) + " · " + x.title, x.id)));
   swap.onchange = () => {
     const n = tracks.find((x) => x.id === swap.value);
     if (!n) return;
