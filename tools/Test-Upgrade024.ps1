@@ -42,7 +42,7 @@ try {
     do {
         foreach ($window in Get-CimInstance Win32_Process -Filter "ParentProcessId=$($old.Id)") {
             if ($window.CommandLine -match 'http://127\.0\.0\.1:39793/#([a-f0-9]{64})') {
-                $sessionUrl = $Matches[0]
+                $sessionUrl = $Matches[0].Replace("/#", "/en#")
                 break
             }
         }
@@ -114,7 +114,10 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
         }
         if (!$button) { Start-Sleep -Milliseconds 500 }
     } until ($button -or (Get-Date) -gt $deadline)
-    if (!$button) { throw 'The graphical updater did not display its Update button.' }
+    if (!$button) {
+        $helperCount = @(Get-Process -Name 'Framequiz-Update' -ErrorAction SilentlyContinue).Count
+        throw "The graphical updater did not display its Update button (updater processes: $helperCount)."
+    }
     $button.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
 
     $deadline = (Get-Date).AddMinutes(4)
