@@ -374,6 +374,10 @@
           <aside class="panel">
             <div class="panelhead"><h2>Библиотека</h2><small id="boardCount"></small></div>
             <label for="boardGenre">Жанр</label><select id="boardGenre"></select>
+            <label for="boardLevel">Сложность</label>
+            <select id="boardLevel"><option value="">Любая</option><option value="easy">Лёгкий</option><option value="medium">Нормальный</option><option value="hard">Сложный</option></select>
+            <div class="row2"><div><label for="boardFrom">Год от</label><input id="boardFrom" type="number" min="1960" max="2100" placeholder="2000"></div>
+            <div><label for="boardTo">до</label><input id="boardTo" type="number" min="1960" max="2100" placeholder="2025"></div></div>
             <div id="boardLib"></div>
           </aside>
           <div class="panel">
@@ -393,6 +397,8 @@
               <button id="designGen" class="primary">Сгенерировать с Claude</button>
               <button id="designCopy" type="button">Скопировать промт</button>
               <button id="designPop" type="button">Стиль Pop</button>
+              <button id="designSoft" type="button">Стиль Soft</button>
+              <button id="designNeon" type="button">Стиль Neon</button>
               <button id="designSolar" type="button">Стиль Solar</button>
             </div>
             <p id="designStatus" role="status"></p>
@@ -413,11 +419,12 @@
               <small id="designFormat"></small></div>
             <label for="designTime">Время угадывания (проверка полосы)</label>
             <input id="designTime" type="range" min="0" max="100" value="55">
+            <button id="designPlay" type="button">▶ Анимация</button>
             <div class="design-previews">
               <figure><canvas id="dpIntro"></canvas><figcaption>Интро</figcaption></figure>
               <figure><canvas id="dpGuess"></canvas><figcaption>Угадывание</figcaption></figure>
-              <figure><canvas id="dpReveal"></canvas><figcaption>Ответ</figcaption></figure>
-              <figure><canvas id="dpVideo"></canvas><figcaption>Видео в рамке</figcaption></figure>
+              <figure><canvas id="dpReveal"></canvas><figcaption>Ответ: обложка + плеер</figcaption></figure>
+              
               <figure><canvas id="dpOutro"></canvas><figcaption>Аутро</figcaption></figure>
             </div>
           </div>
@@ -428,8 +435,24 @@
           <p>Итоговый редактор. Раунд: угадывание с таймером, обложка тайтла, плавный переход в видео с пиком. Тяните края клипов, переставляйте раунды.</p></div>
           <button id="tlExport" class="primary">↑ Экспорт MP4</button></div>
         <div class="panel tl-top">
-          <canvas id="tlPreview" class="tl-preview" aria-label="Предпросмотр кадра"></canvas>
+          <div class="tl-viewer">
+            <canvas id="tlPreview" class="tl-preview" aria-label="Предпросмотр кадра"></canvas>
+            <div id="tlResize" class="tl-resize" role="separator" aria-orientation="horizontal" title="Тяните вверх и вниз — размер плеера. Двойной клик — исходный"><span></span></div>
+            <div class="tl-sizes"><button type="button" data-prev="160">S</button><button type="button" data-prev="300">M</button><button type="button" data-prev="480">L</button><button type="button" data-prev="680">XL</button></div>
+          </div>
           <div id="tlInspector"></div>
+        </div>
+        <div class="panel fx-panel">
+          <h2>Эффекты</h2>
+          <textarea id="fxPrompt" rows="2" maxlength="300" placeholder="Опишите эффект: «сепия и зерно на видео», «чёрно-белое угадывание в раунде 2», «слегка размыть обложку»"></textarea>
+          <div class="round-opts">
+            <label class="tl-opt">Куда <select id="fxRound"></select></label>
+            <label class="tl-opt">Часть <select id="fxPart"><option value="all">всё</option><option value="guess">угадывание</option><option value="reveal">ответ</option><option value="video">видео</option></select></label>
+            <button id="fxAdd" class="primary" type="button">Добавить эффект</button>
+            <button id="fxClear" type="button">Убрать все</button>
+          </div>
+          <div id="fxList" class="basket"></div>
+          <p class="hint">Что названо в описании («раунд 2», «на видео»), важнее списков. В плеере показаны основные эффекты, виньетку, зерно и глитч видно только в готовом MP4. Со своим ключом Claude API понимает свободные формулировки.</p>
         </div>
         <div class="panel">
           <div class="tl-tools" role="toolbar" aria-label="Инструменты таймлайна">
@@ -443,8 +466,15 @@
             <input id="tlZoom" type="range" min="3" max="40" value="10" aria-label="Масштаб">
             <button id="tlZoomIn" title="Увеличить масштаб (+)">+</button>
             <button id="tlFit" title="Вписать всё в окно (Shift+Z)">Вписать</button>
+            <label class="tl-opt" title="Переход между раундами, интро и аутро. Плавный — затухание в тёмный и обратно">Переход
+              <select id="tlTrans"><option value="wipe">Шторки</option><option value="smooth">Плавное появление</option><option value="flash">Вспышка</option><option value="none">Без перехода</option></select></label>
+            <label class="tl-opt" title="Длительность плавных переходов">Плавность
+              <input id="tlFade" type="range" min="3" max="20" value="8"><b id="tlFadeVal"></b></label>
             <span class="grow"></span>
-            <button id="tlPlay" title="Пробел">▶</button><b id="tlTime">0:00 / 0:00</b>
+            <label class="tl-opt" title="Громкость только для прослушивания здесь, в экспортируемое видео не влияет">🔊
+              <input id="tlVol" type="range" min="0" max="100" value="35" aria-label="Громкость предпросмотра"></label>
+            <span id="tlWhere"></span>
+            <button id="tlPlay" title="Пробел">▶</button><b id="tlTime">0:00.0 / 0:00</b>
           </div>
           <div class="tl-wrap">
             <div class="tl-labels"><span>Время</span><span>Раунд</span><span>V1 Кадр</span><span>A1 Звук</span></div>

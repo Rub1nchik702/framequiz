@@ -34,6 +34,11 @@ fn audio_identity(track: &Value, path: &Path) -> Option<String> {
 
 static IMPORT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
+pub fn delete(id: &str) -> Result<Value> {
+    fs::remove_dir_all(track_path(id)?).map_err(error)?;
+    list()
+}
+
 pub fn list() -> Result<Value> {
     let mut tracks = Vec::new();
     fs::create_dir_all(root()).map_err(error)?;
