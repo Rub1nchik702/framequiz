@@ -4,13 +4,18 @@
 
 Framequiz Studio turns anime openings, endings and trivia questions into timed quiz videos for YouTube and Shorts. Choose tracks by difficulty, trim the clips, design a cover and export an MP4 on your Windows PC.
 
-![Framequiz episode editor](docs/studio.jpg)
-
 ## What's new in 2.5.0
 
-- Browse Shikimori by genre, year and format, find openings and endings, and collect songs across titles in the basket.
-- Arrange rounds on the board, adjust the Shorts or YouTube timeline, and preview the Pop or Solar design.
-- Check difficulty with AMQ exports, retry failed downloads, and export your quiz as MP4.
+- **Catalog and song basket.** Browse Shikimori by genre, year and format, filter by AMQ difficulty, and collect OP and ED tracks across multiple anime to download together. Songs display their opening or ending number.
+- **Round board.** Add tracks from the library, reorder rounds and choose where the reveal video starts. Auto-peak can suggest a starting point.
+- **Design.** Choose Pop or Solar and preview the intro, guessing screen, answer, framed video and outro. You can adjust the guessing timer and preview either aspect ratio.
+- **Timeline and export.** Edit guessing, answer and highlight segments for Shorts (9:16) or YouTube (16:9), trim clips and track MP4 export progress.
+
+![Framequiz 2.5.0 Pop design preview](docs/design-2.5.jpg)
+
+![Round board with a sample music library](docs/rounds-2.5.jpg)
+
+![Shorts timeline with three demo rounds](docs/timeline-2.5.jpg)
 
 ## First episode
 
@@ -18,8 +23,6 @@ Framequiz Studio turns anime openings, endings and trivia questions into timed q
 2. In **Music library**, import local audio or choose an opening or ending from AnisongDB. The studio stores the video, song title and anime title together. Difficulty comes from the catalog or from a matching AMQ Song List UI export.
 3. In the music editor, set the number of easy, medium and hard tracks for each type. Build the plan, adjust the start of each clip, preview and export. Finished episodes appear in the **exports** folder.
 4. For a text episode, select a topic and audience. The Sources tab accepts individual questions, a UTF-8 JSON question list, or RSS and Atom feeds for research.
-
-![Music library and track import](docs/library.jpg)
 
 ## Updates from this private repository
 
