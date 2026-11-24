@@ -342,6 +342,123 @@ pub fn update(id: &str, fields: &Value) -> Result<Value> {
     Ok(meta)
 }
 
+pub struct Media {
+    pub flac: PathBuf,
+    pub video: Option<PathBuf>,
+    pub duration_ms: u64,
+}
+
+/// Files of a downloaded track: the FLAC for audio and the MP4 (if any) for footage.
+pub fn media(id: &str) -> Result<Media> {
+    let dir = track_path(id)?;
+    let meta = metadata(&dir)?;
+    let video = meta["videoFile"]
+        .as_str()
+        .map(|name| dir.join(name))
+        .filter(|p| p.parent() == Some(dir.as_path()) && p.extension().and_then(|x| x.to_str()) == Some("mp4") && p.is_file());
+    Ok(Media {
+        flac: dir.join("track.flac"),
+        video,
+        duration_ms: meta["durationMs"].as_u64().ok_or("Длительность трека")?,
+    })
+}
+
+/// Full-size cover (saved next to the track) as a data URL, falling back to the small one.
+pub fn cover_full(id: &str) -> Result<Value> {
+    let dir = track_path(id)?;
+    match fs::read(dir.join("cover.jpg")) {
+        Ok(bytes) => Ok(json!(format!("data:image/jpeg;base64,{}", super::shiki::base64(&bytes)))),
+        Err(_) => Ok(metadata(&dir)?["cover"].clone()),
+    }
+}
+
+pub fn save_cover(id: &str, bytes: &[u8]) -> Result<()> {
+    fs::write(track_path(id)?.join("cover.jpg"), bytes).map_err(error)
+}
+
+pub fn open_tracks() -> Result<Value> {
+    fs::create_dir_all(root()).map_err(error)?;
+    cmd("explorer.exe").arg(root()).spawn().map_err(error)?;
+    Ok(json!(true))
+}
+
+/// Fills `ru` from Shikimori by the English anime name; keeps a manual `ru`.
+/// shortcut: first search hit (exact-name match preferred), wrong for ambiguous titles; user can edit the field.
+pub fn shikimori(id: &str) -> Result<Value> {
+    let meta = metadata(&track_path(id)?)?;
+    if meta["ru"].as_str().is_some_and(|s| !s.is_empty()) || meta["ruChecked"] == true {
+        return Ok(meta);
+    }
+    let name = meta["anime"].as_str().ok_or("Аниме")?;
+    let out = cmd("curl.exe")
+        .args(["-fsS", "--max-time", "15", "--max-filesize", "1000000", "-A", "Framequiz"])
+        .arg(format!(
+            "https://shikimori.io/api/animes?limit=5&order=popularity&search={}",
+            super::encode(name)
+        ))
+        .output()
+        .map_err(|_| "curl.exe недоступен")?;
+    if !out.status.success() {
+        return Err("Shikimori недоступен".into());
+    }
+    let found: Value = serde_json::from_slice(&out.stdout).map_err(|_| "Ответ Shikimori")?;
+    let hits = found.as_array().ok_or("Ответ Shikimori")?;
+    let hit = hits
+        .iter()
+        .find(|h| h["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(name)))
+        .or(hits.first());
+    let ru = hit.and_then(|h| h["russian"].as_str()).unwrap_or("");
+    update(id, &json!({ "ru": ru, "ruChecked": true }))
+}
+
+pub fn set_ru(id: &str, ru: &str) -> Result<Value> {
+    let ru = ru.trim();
+    if ru.chars().count() > 160 {
+        return Err("Русское название: до 160 символов".into());
+    }
+    update(id, &json!({ "ru": ru }))
+}
+
+/// Start of the loudest `seconds`-long window, skipping the first 10% (intro).
+/// shortcut: loudness proxy, not real chorus detection; upgrade to spectral analysis if picks feel wrong.
+pub fn peak_offset(id: &str, seconds: u64) -> Result<u64> {
+    let total = metadata(&track_path(id)?)?["durationMs"].as_u64().ok_or("Длительность")? / 1000;
+    let max_start = total.checked_sub(seconds).ok_or("Отрывок длиннее трека")?;
+    let peaks = waveform(id)?;
+    let peaks: Vec<u64> = peaks.as_array().ok_or("Дорожка")?.iter().filter_map(|p| p.as_u64()).collect();
+    if peaks.is_empty() {
+        return Err("Пустая звуковая дорожка".into());
+    }
+    Ok(loudest_start(&peaks, total, seconds).min(max_start))
+}
+
+fn loudest_start(peaks: &[u64], total: u64, seconds: u64) -> u64 {
+    let bucket = total as f64 / peaks.len() as f64;
+    let width = ((seconds as f64 / bucket).ceil() as usize).clamp(1, peaks.len());
+    let first = ((total as f64 * 0.1 / bucket) as usize).min(peaks.len() - width);
+    let mut sum = peaks[first..first + width].iter().sum::<u64>();
+    let (mut best, mut at) = (sum, first);
+    for i in first + 1..=peaks.len() - width {
+        sum = sum + peaks[i + width - 1] - peaks[i - 1];
+        if sum > best {
+            (best, at) = (sum, i);
+        }
+    }
+    (at as f64 * bucket).round() as u64
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn picks_loudest_window_after_intro() {
+        // 100 buckets over 100 s: loud block at 40..50 s, a louder one inside the skipped intro (0..5 s)
+        let mut p = vec![10u64; 100];
+        p[40..50].fill(100);
+        p[0..5].fill(500);
+        assert_eq!(super::loudest_start(&p, 100, 10), 40);
+    }
+}
+
 pub fn waveform(id: &str) -> Result<Value> {
     let dir = track_path(id)?;
     let ff = base().join("ffmpeg.exe");

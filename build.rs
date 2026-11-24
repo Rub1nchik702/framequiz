@@ -30,7 +30,13 @@ fn main() {
                 .replace("src=\"/app.js\"", "src=\"/en/app.js\"");
         }
         if file == "app.js" {
-            en = en.replace("const errorMessages = {};", &format!("const errorMessages = {};", fs::read_to_string("ui/errors.en.json").unwrap()));
+            en = en.replace(
+                "const errorMessages = {};",
+                &format!(
+                    "const errorMessages = {};",
+                    fs::read_to_string("ui/errors.en.json").unwrap()
+                ),
+            );
         }
         fs::write(out.join(format!("en-{file}")), en).unwrap();
     }

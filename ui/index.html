@@ -14,10 +14,10 @@
         <img class="logo" src="/sun.svg" alt="" /> Framequiz <em>Studio</em>
       </div>
       <nav>
-        <button data-tab="studio" class="active">Редактор</button
-        ><button data-tab="tracks">Фонотека</button
-        ><button data-tab="library">Источники</button
-        ><button data-tab="trends">Тренды</button>
+        <button data-tab="catalog" class="active">Каталог</button
+        ><button data-tab="board">Раунды</button
+        ><button data-tab="design">Дизайн</button
+        ><button data-tab="timeline">Таймлайн</button>
       </nav>
       <button id="language" aria-label="English / Русский">EN / RU</button>
       <button id="updateBadge" aria-controls="updatePanel" aria-expanded="false">v@VERSION@</button
@@ -31,7 +31,7 @@
     </header>
     <aside id="updatePanel" hidden><strong>Обновления приложения</strong><p role="status" id="updateStatus"></p><button id="openUpdater">Обновить</button></aside>
     <main>
-      <section id="studio">
+      <section id="studio" hidden>
         <div class="intro">
           <div>
             <h1>Студия квизов<span>.</span></h1>
@@ -181,6 +181,7 @@
               <span class="icon">≡</span>
               <h2>План выпуска</h2>
               <small id="planMeta"></small>
+              <button id="addRound" type="button" hidden>+ Трек из фонотеки</button>
             </div>
             <div id="rounds"></div>
           </div>
@@ -225,6 +226,8 @@
               maxlength="160"
               placeholder="Например, GO!!!"
             />
+            <label for="trackRu">Русское название (необязательно)</label
+            ><input id="trackRu" maxlength="160" placeholder="Например, Наруто · Гоу!!!" />
             <div class="pair">
               <div>
                 <label for="trackKind">Тип трека</label
@@ -297,10 +300,157 @@
               <span class="icon"></span>
               <h2>Мои треки</h2>
               <small id="trackCount"></small>
+              <button id="openTracks" type="button">Открыть папку треков</button>
             </div>
             <div id="trackList"></div>
             <audio id="audition" controls hidden></audio>
           </div>
+        </div>
+      </section>
+      <section id="catalog">
+        <div class="intro"><div><h1>Каталог<span>.</span></h1>
+          <p>Все аниме от самых популярных. Справа фильтры по жанру, годам и сложности угадывания (по данным Anime Music Quiz). Клик по аниме показывает его опенинги и эндинги.</p></div></div>
+        <div class="catgrid">
+          <div class="panel">
+            <div class="catbar">
+              <input id="animeSearch" type="search" placeholder="Поиск по названию…" aria-label="Поиск по названию" maxlength="100">
+              <button id="animeSearchGo" type="button">Найти</button>
+            </div>
+            <div id="animeList" class="anime-grid"></div>
+            <button id="moreAnime" type="button" hidden>Показать ещё</button>
+            <p id="catalogStatus" role="status"></p>
+          </div>
+          <div class="catside">
+            <div class="panel filters">
+              <h2>Фильтры</h2>
+              <label for="genrePick">Жанр</label>
+              <select id="genrePick"><option value="">Все жанры</option></select>
+              <label for="yearFrom">Годы выхода</label>
+              <div class="pair">
+                <input id="yearFrom" type="number" min="1950" max="2100" placeholder="от" aria-label="Год от">
+                <input id="yearTo" type="number" min="1950" max="2100" placeholder="до" aria-label="Год до">
+              </div>
+              <label>Тип</label>
+              <div class="levelbar">
+                <button type="button" data-type="" class="selected">Все</button>
+                <button type="button" data-type="series" title="TV и серийные OVA/ONA по 20–30 минут">Сериалы</button>
+                <button type="button" data-type="movie" title="Фильмы и OVA/ONA длиннее 40 минут">Фильмы</button>
+              </div>
+              <label>Сложность угадывания (AMQ)</label>
+              <div class="levelbar">
+                <button type="button" data-diff="" class="selected">Любая</button>
+                <button type="button" data-diff="easy">Легко</button>
+                <button type="button" data-diff="medium">Средне</button>
+                <button type="button" data-diff="hard">Сложно</button>
+              </div>
+              <p id="levelNote" hidden>Аниме, у которых есть опенинги или эндинги этой сложности. Сначала самый высокий рейтинг.</p>
+              <button id="levelRefresh" type="button" hidden>Другая подборка</button>
+              <label for="orderPick">Сортировка</label>
+              <select id="orderPick"><option value="popularity">По популярности</option><option value="ranked">По рейтингу</option></select>
+              <button id="resetFilters" type="button" class="spaced">Сбросить фильтры</button>
+            </div>
+            <aside class="panel songs">
+              <h2 id="songsTitle">Песни</h2>
+              <p class="hint">Выберите аниме слева. Здесь появятся его опенинги и эндинги с номерами.</p>
+              <div class="songtools">
+                <button id="pickOP" type="button" class="badge-op">Все OP</button>
+                <button id="pickED" type="button" class="badge-ed">Все ED</button>
+                <button id="pickNone" type="button">Сбросить</button>
+              </div>
+              <div id="songList"></div>
+              <div id="basket" class="basket" hidden></div>
+              <button id="downloadSongs" class="primary spaced" hidden>Скачать выбранные</button>
+              <progress id="songBar" max="1" value="0" hidden></progress>
+              <p id="songStatus" role="status"></p>
+            </aside>
+          </div>
+        </div>
+      </section>
+      <section id="board" hidden>
+        <div class="intro"><div><h1>Раунды<span>.</span></h1>
+          <p>Перетащите тайтл из библиотеки в раунд или нажмите «В раунд» на карточке. Каждый раунд получает шаблон: угадывание с таймером, обложка тайтла и видео с пиковым моментом.</p></div>
+          <div class="intro-actions"><button id="toTimeline" class="primary">К таймлайну ↗</button></div></div>
+        <div class="boardgrid">
+          <aside class="panel">
+            <div class="panelhead"><h2>Библиотека</h2><small id="boardCount"></small></div>
+            <label for="boardGenre">Жанр</label><select id="boardGenre"></select>
+            <div id="boardLib"></div>
+          </aside>
+          <div class="panel">
+            <div id="boardRounds"></div>
+            <button id="addBoardRound" type="button" class="roundtile" aria-label="Добавить раунд" title="Добавить раунд">+</button>
+          </div>
+        </div>
+      </section>
+      <section id="design" hidden>
+        <div class="intro"><div><h1>Дизайн<span>.</span></h1>
+          <p>Опишите, как должны выглядеть интро, экран угадывания (таймер, полоса времени, место под картинку), ответ и аутро. Claude соберёт шаблон, а вы сразу увидите сцены справа.</p></div></div>
+        <div class="design-grid">
+          <div class="panel">
+            <label for="designPrompt">Ваше описание</label>
+            <textarea id="designPrompt" rows="5" maxlength="600" placeholder="Например: тёмный неоновый стиль, фиолетовая полоса времени, кольцевой таймер, на ответе обложка в рамке-полароиде"></textarea>
+            <div class="round-opts">
+              <button id="designGen" class="primary">Сгенерировать с Claude</button>
+              <button id="designCopy" type="button">Скопировать промт</button>
+              <button id="designPop" type="button">Стиль Pop</button>
+              <button id="designSolar" type="button">Стиль Solar</button>
+            </div>
+            <p id="designStatus" role="status"></p>
+            <details><summary>Ключ Claude API</summary>
+              <p class="hint">Ключ с console.anthropic.com. Он хранится только в этом приложении на вашем компьютере. Запрос с вашим описанием и текущим шаблоном уходит только в Anthropic.</p>
+              <input id="claudeKey" type="password" placeholder="sk-ant-…" autocomplete="off">
+            </details>
+            <details><summary>Вставить ответ Claude вручную</summary>
+              <p class="hint">Нажмите «Скопировать промт», отправьте его Claude в любом чате и вставьте сюда его JSON-ответ.</p>
+              <textarea id="designPaste" rows="6"></textarea>
+              <button id="designApply" type="button">Применить</button>
+            </details>
+            <details><summary>Параметры шаблона</summary><pre id="designJson"></pre></details>
+          </div>
+          <div class="panel">
+            <div class="panelhead"><h2>Предпросмотр</h2>
+              <span class="fmt"><button data-dfmt="short">Shorts 9:16</button><button data-dfmt="long">YouTube 16:9</button></span>
+              <small id="designFormat"></small></div>
+            <label for="designTime">Время угадывания (проверка полосы)</label>
+            <input id="designTime" type="range" min="0" max="100" value="55">
+            <div class="design-previews">
+              <figure><canvas id="dpIntro"></canvas><figcaption>Интро</figcaption></figure>
+              <figure><canvas id="dpGuess"></canvas><figcaption>Угадывание</figcaption></figure>
+              <figure><canvas id="dpReveal"></canvas><figcaption>Ответ</figcaption></figure>
+              <figure><canvas id="dpVideo"></canvas><figcaption>Видео в рамке</figcaption></figure>
+              <figure><canvas id="dpOutro"></canvas><figcaption>Аутро</figcaption></figure>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="timeline" hidden>
+        <div class="intro"><div><h1>Таймлайн<span>.</span></h1>
+          <p>Итоговый редактор. Раунд: угадывание с таймером, обложка тайтла, плавный переход в видео с пиком. Тяните края клипов, переставляйте раунды.</p></div>
+          <button id="tlExport" class="primary">↑ Экспорт MP4</button></div>
+        <div class="panel tl-top">
+          <canvas id="tlPreview" class="tl-preview" aria-label="Предпросмотр кадра"></canvas>
+          <div id="tlInspector"></div>
+        </div>
+        <div class="panel">
+          <div class="tl-tools" role="toolbar" aria-label="Инструменты таймлайна">
+            <span class="fmt"><button data-fmt="short" title="Вертикальное видео 1080×1920">Shorts 9:16</button><button data-fmt="long" title="Горизонтальное видео 1920×1080">YouTube 16:9</button></span>
+            <button id="tlDup" title="Дублировать раунд (D)">⧉ Дубль</button>
+            <button id="tlDel" title="Удалить раунд и сомкнуть промежуток (Delete)">⌫ Ripple</button>
+            <button id="tlMagnet" aria-pressed="true" title="Магнит: края клипов липнут к playhead (N)">🧲 Магнит</button>
+            <button id="tlUndo" title="Отменить (Ctrl+Z)">↶</button>
+            <button id="tlRedo" title="Вернуть (Ctrl+Y)">↷</button>
+            <button id="tlZoomOut" title="Уменьшить масштаб (−)">−</button>
+            <input id="tlZoom" type="range" min="3" max="40" value="10" aria-label="Масштаб">
+            <button id="tlZoomIn" title="Увеличить масштаб (+)">+</button>
+            <button id="tlFit" title="Вписать всё в окно (Shift+Z)">Вписать</button>
+            <span class="grow"></span>
+            <button id="tlPlay" title="Пробел">▶</button><b id="tlTime">0:00 / 0:00</b>
+          </div>
+          <div class="tl-wrap">
+            <div class="tl-labels"><span>Время</span><span>Раунд</span><span>V1 Кадр</span><span>A1 Звук</span></div>
+            <div id="tlScroll" class="tl-scroll"><div id="tlStage" class="tl-stage"></div></div>
+          </div>
+          <p class="tl-hint">Края клипов тянутся с шагом 1 с. Звук A1 можно двигать мышью: так меняется момент в песне (slip). Клик по линейке ставит playhead. Горячие клавиши: D, N, Delete, Пробел, ← →, Ctrl+Z.</p>
         </div>
       </section>
       <section id="library" hidden>
@@ -331,6 +481,11 @@
             >
               Добавить в каталог
             </button>
+            <hr />
+            <h2>Быстрый ввод</h2>
+            <p>Вставьте список: одна строка — один вопрос. Вопрос и ответ разделите знаком «|». Тематика и сложность берутся из полей выше.</p>
+            <textarea id="bulkQ" rows="6" placeholder="Who is Luffy’s brother? | Ace"></textarea>
+            <button id="addBulk" class="spaced">Добавить все строки</button>
           </div>
           <div>
             <div class="panel">
@@ -417,6 +572,7 @@
     <dialog id="dialog">
       <h2 id="dTitle"></h2>
       <p id="dText" role="status"></p>
+      <progress id="dBar" max="1" value="0" hidden></progress>
       <button id="openFolder" hidden>Открыть папку</button>
       <button id="retryExport" class="primary" hidden>Повторить экспорт</button>
       <button id="closeDialog">Закрыть</button>
@@ -429,13 +585,18 @@
       <p id="waveTiming" aria-live="polite"></p>
       <audio id="waveAudio" controls hidden></audio>
       <p id="waveStatus" role="status"></p>
-      <div class="dialog-actions"><button id="wavePlay">▶ Прослушать</button>
+      <div class="dialog-actions"><button id="wavePeak">★ Авто-пик</button><button id="wavePlay">▶ Прослушать</button>
         <button id="waveSave" class="primary">Сохранить</button><button id="waveClose">Закрыть</button></div>
     </dialog>
     <dialog id="replaceDialog">
       <h2>Заменить трек в раунде</h2><p id="replaceInfo"></p>
       <label for="replacement">Выберите трек</label><select id="replacement"></select>
       <div class="dialog-actions"><button id="replaceSave" class="primary">Заменить</button><button id="replaceClose">Закрыть</button></div>
+    </dialog>
+    <dialog id="addDialog">
+      <h2>Добавить трек в план</h2><p id="addInfo"></p>
+      <label for="addChoice">Фонотека (папка tracks)</label><select id="addChoice"></select>
+      <div class="dialog-actions"><button id="addSave" class="primary">Добавить</button><button id="addClose">Закрыть</button></div>
     </dialog>
     <script src="/music.js"></script>
     <script src="/app.js"></script>

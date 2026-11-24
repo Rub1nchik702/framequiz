@@ -669,3 +669,136 @@ header {
 #updatePanel {padding:12px 5vw;background:var(--panel,#26242a);color:var(--text,#fff)}
 #updatePanel p {margin:.4em 0}
 #updateBadge.updateReady {outline:2px solid #f58255}
+.grip { cursor:grab; color:var(--muted); user-select:none; padding:0 2px; }
+.row.over { outline:2px dashed var(--peach); outline-offset:-2px; }
+.row input:nth-of-type(3) { width:25%; font-size:12px; }
+.track-card .ru { display:block; margin-top:4px; font-size:12px; width:100%; }
+#openTracks { margin-left:8px; font-size:12px; padding:5px 8px; }
+#addRound { margin-left:auto; font-size:12px; padding:5px 8px; }
+#dBar { width:100%; height:10px; accent-color:var(--peach); }
+.anime-card, .lib-card { display:flex; gap:10px; align-items:center; text-align:left; width:100%; padding:8px; margin-top:6px; }
+.anime-card img, .lib-card img { width:46px; height:64px; object-fit:cover; border-radius:6px; background:#2a2325; flex:none; }
+.anime-card span, .lib-card span { display:block; min-width:0; }
+.anime-card b, .lib-card b { display:block; overflow-wrap:anywhere; }
+.anime-card small, .lib-card small { display:block; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.anime-card.selected { outline:2px solid var(--peach); }
+.song-row { display:flex; gap:8px; align-items:center; padding:7px 0; border-top:1px solid var(--line); }
+.song-row span { flex:1; overflow-wrap:anywhere; font-size:13px; }
+.song-row small { color:var(--muted); white-space:nowrap; }
+#songBar { width:100%; height:10px; accent-color:var(--peach); }
+.boardgrid { display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:16px; align-items:start; }
+@media (max-width:760px){ .boardgrid { grid-template-columns:1fr; } }
+.lib-card { position:relative; cursor:grab; border:1px solid var(--line); border-radius:10px; }
+.lib-card .add-hover { position:absolute; right:6px; bottom:6px; display:none; font-size:12px; padding:4px 8px; }
+.lib-card:hover .add-hover { display:block; }
+.round-plank { border:1px dashed var(--line); border-radius:12px; padding:10px; margin-bottom:10px; }
+.round-plank.active { border-color:var(--peach); }
+.round-plank.over { background:#2a2325; border-style:solid; }
+.round-plank h3 { margin:0; font-size:16px; }
+.round-plank .lib-card { cursor:default; }
+/* --- каталог: крупные обложки, компактный список песен --- */
+.catgrid { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; align-items:start; }
+@media (max-width:900px){ .catgrid { grid-template-columns:1fr; } }
+.catbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.catbar input { flex:1 1 180px; }
+.catbar select { flex:0 1 200px; }
+.anime-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(132px, 1fr)); gap:12px; }
+.anime-grid .anime-card { display:block; margin:0; padding:0; overflow:hidden; border-radius:10px; position:relative; }
+.anime-grid .anime-card img { display:block; width:100%; height:auto; aspect-ratio:2/3; object-fit:cover; border-radius:0; }
+.anime-grid .anime-card span { padding:6px 8px 8px; }
+.anime-grid .anime-card b { font-size:12px; line-height:1.25; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.anime-grid .anime-card small { font-size:10px; }
+.anime-grid .anime-card .score { position:absolute; top:6px; left:6px; background:#000b; color:#ffd77a; font-size:12px; padding:2px 6px; border-radius:6px; }
+.songs { position:sticky; top:8px; max-height:calc(100vh - 24px); overflow:auto; }
+.songs h2 { font-size:17px; margin-bottom:6px; }
+.songtools { display:flex; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+.songtools button { font-size:12px; padding:3px 9px; }
+.song-row { display:flex; gap:6px; align-items:center; padding:3px 0; border-top:1px solid var(--line); cursor:pointer; line-height:1.2; }
+.song-row input { margin:0; flex:none; }
+.song-row .kind { min-width:34px; text-align:center; padding:1px 4px; font-size:11px; }
+.song-row.op .kind, .badge-op { background:#4a2a1a; border-color:#c97b3f; color:#ffc58f; }
+.song-row.ed .kind, .badge-ed { background:#1d2c4a; border-color:#4f78c9; color:#a9c4ff; }
+.song-row span { flex:1; font-size:12px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.song-row small { font-size:10px; }
+.song-row:hover { background:#2a2325; }
+/* --- раунды --- */
+.intro-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.roundtile { width:44px; height:44px; font-size:22px; padding:0; border-style:dashed; border-radius:10px; }
+.round-plank .round-opts { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; font-size:12px; }
+.round-plank .round-opts select, .round-plank .round-opts button { font-size:12px; padding:3px 8px; }
+/* --- таймлайн --- */
+.tl-top { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:12px; }
+.tl-preview { max-height:240px; max-width:100%; width:auto; height:240px; border-radius:8px; background:#111; }
+#tlInspector { flex:1 1 280px; min-width:0; }
+#tlInspector .insp-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:8px; margin:8px 0; }
+#tlInspector label { font-size:11px; display:block; }
+.tl-tools { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+.tl-tools button { font-size:12px; padding:5px 9px; }
+.tl-tools button.selected, .tl-tools button[aria-pressed="true"] { outline:2px solid var(--peach); }
+.tl-tools .grow { flex:1; }
+.tl-tools input[type=range] { width:90px; padding:0; accent-color:var(--peach); }
+.tl-wrap { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#141113; }
+.tl-labels { flex:none; width:74px; display:flex; flex-direction:column; font-size:11px; color:var(--muted); border-right:1px solid var(--line); }
+.tl-labels span { display:flex; align-items:center; padding:0 6px; border-bottom:1px solid var(--line); }
+.tl-labels span:nth-child(1) { height:24px; } .tl-labels span:nth-child(2) { height:26px; }
+.tl-labels span:nth-child(3) { height:46px; } .tl-labels span:nth-child(4) { height:46px; border-bottom:0; }
+.tl-scroll { flex:1; overflow-x:auto; overflow-y:hidden; }
+.tl-stage { position:relative; height:142px; min-width:100%; user-select:none; touch-action:none; }
+.tl-ruler { position:absolute; left:0; right:0; top:0; height:24px; border-bottom:1px solid var(--line); cursor:ew-resize; }
+.tl-tick { position:absolute; top:12px; bottom:0; border-left:1px solid #5b4f55; font-size:9px; color:var(--muted); padding-left:2px; pointer-events:none; }
+.tl-round { position:absolute; top:25px; height:24px; background:#3a2d33; border:1px solid #6a5560; border-radius:5px; font-size:11px; line-height:22px; padding:0 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; cursor:grab; box-sizing:border-box; }
+.tl-round.sel { background:#5a3a30; border-color:var(--peach); }
+.tl-seg { position:absolute; height:42px; border-radius:5px; font-size:11px; line-height:42px; padding:0 8px; overflow:hidden; white-space:nowrap; box-sizing:border-box; border:1px solid #0006; }
+.tl-seg.intro { background:#4f6a8f; top:51px; } .tl-seg.clip { background:#c0653f; top:51px; } .tl-seg.answer { background:#4f8f6a; top:51px; }
+.tl-seg.audio { background:#7a4fa0; top:97px; cursor:ew-resize; } .tl-seg.sel { outline:2px solid #fff8; }
+.tl-seg .h { position:absolute; top:0; bottom:0; width:7px; cursor:col-resize; background:#fff3; }
+.tl-seg .h.l { left:0; } .tl-seg .h.r { right:0; }
+.tl-blade .tl-seg, .tl-blade .tl-round { cursor:crosshair; }
+.tl-head { position:absolute; top:0; bottom:0; width:2px; background:#ff4d4d; pointer-events:none; z-index:5; }
+.tl-head::before { content:""; position:absolute; top:0; left:-5px; border:6px solid transparent; border-top-color:#ff4d4d; }
+.tl-hint { font-size:11px; color:var(--muted); margin:8px 0 0; }
+.song-row input[type=checkbox] { width:15px; height:15px; padding:0; flex:none; }
+.round-opts select { width:auto; min-width:70px; }
+.round-opts button { width:auto; }
+/* --- каталог: фильтры справа, метки OP/ED --- */
+.catside { display:flex; flex-direction:column; gap:12px; }
+.filters h2 { font-size:17px; margin-bottom:4px; }
+.filters label { font-size:12px; margin-top:8px; display:block; }
+.filters .pair { display:flex; gap:8px; }
+.levelbar { display:flex; gap:6px; flex-wrap:wrap; }
+.levelbar button { font-size:12px; padding:4px 10px; }
+.levelbar button.selected { outline:2px solid var(--peach); }
+#levelNote { font-size:11px; color:var(--muted); margin:6px 0; }
+#levelRefresh { font-size:12px; padding:3px 9px; }
+.songs { position:static; max-height:60vh; }
+.songs .hint { font-size:11px; color:var(--muted); margin:0 0 6px; }
+.song-head { font-size:11px; font-weight:700; color:var(--peach); margin-top:8px; padding-top:4px; border-top:1px solid var(--line); overflow-wrap:anywhere; }
+.song-row .kind { min-width:44px; font-size:12px; }
+.song-row.have { opacity:.55; cursor:default; }
+.chip { font-style:normal; font-weight:700; font-size:11px; padding:1px 6px; border-radius:6px; border:1px solid #6a5560; background:#3a2d33; }
+.chip.op { background:#4a2a1a; border-color:#c97b3f; color:#ffc58f; }
+.chip.ed { background:#1d2c4a; border-color:#4f78c9; color:#a9c4ff; }
+.tl-tools .fmt { display:flex; gap:6px; }
+.tl-tools [data-fmt].selected { outline:2px solid var(--peach); }
+.cover-refresh { position:absolute; top:6px; right:6px; width:24px; height:24px; line-height:24px; text-align:center; border-radius:50%; background:#000b; color:#fff; font-size:15px; opacity:0; cursor:pointer; }
+.anime-card:hover .cover-refresh { opacity:1; }
+.design-grid { display:grid; grid-template-columns:minmax(260px,380px) 1fr; gap:16px; align-items:start; }
+@media (max-width:900px){ .design-grid { grid-template-columns:1fr; } }
+.design-grid textarea { width:100%; }
+.design-grid details { margin-top:10px; }
+.design-grid .hint { font-size:11px; color:var(--muted); }
+#designJson { white-space:pre-wrap; font-size:11px; max-height:260px; overflow:auto; }
+.design-previews { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-top:10px; }
+.design-previews figure { margin:0; }
+.design-previews canvas { width:100%; height:auto; max-height:360px; border-radius:8px; background:#111; object-fit:contain; }
+.design-previews figcaption { font-size:11px; color:var(--muted); text-align:center; margin-top:4px; }
+.tl-seg.card { background:#6a5a7a; top:51px; }
+.tl-round.card { background:#3a3347; cursor:default; }
+.panelhead .fmt { display:flex; gap:6px; margin-left:12px; }
+.panelhead .fmt button { font-size:12px; padding:3px 9px; }
+.panelhead .fmt button.selected { outline:2px solid var(--peach); }
+.anime-grid .anime-card b { font-weight:500; color:#e9e2dd; letter-spacing:0; }
+.anime-grid .anime-card small { font-weight:400; }
+
+.basket { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; max-height:110px; overflow:auto; }
+.basket button { font-size:11px; padding:2px 7px; }
