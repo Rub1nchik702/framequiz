@@ -6,6 +6,12 @@ Framequiz Studio turns anime openings, endings and trivia questions into timed q
 
 ![Framequiz episode editor](docs/studio.jpg)
 
+## What's new in 2.5.0
+
+- Browse Shikimori by genre, year and format, find openings and endings, and collect songs across titles in the basket.
+- Arrange rounds on the board, adjust the Shorts or YouTube timeline, and preview the Pop or Solar design.
+- Check difficulty with AMQ exports, retry failed downloads, and export your quiz as MP4.
+
 ## First episode
 
 1. Extract the entire Windows ZIP into a writable folder and run **Framequiz.exe**. The desktop window uses Microsoft Edge WebView2 Runtime. Choose **EN / RU** in the header to switch languages.
@@ -17,13 +23,15 @@ Framequiz Studio turns anime openings, endings and trivia questions into timed q
 
 ## Updates from this private repository
 
-Accept the repository invitation using your own GitHub account. In Framequiz 0.2.2 or later, click the version in the header and choose **Update → Sign in with GitHub**. Enter the displayed code on GitHub in your browser and authorize Framequiz Desktop Updates 702. Return to the updater and click **Update**. It verifies the release digest, installs the files, and reopens the studio. The access token is protected for your Windows user with DPAPI. Use **Sign out** to remove it, or sign in again when the session expires.
+Accept the repository invitation using your own GitHub account. In Framequiz **0.2.4**, click the version in the header and choose **Update → Sign in with GitHub**. Enter the displayed code on GitHub in your browser and authorize Framequiz Desktop Updates 702. Return to the updater and click **Update**. It downloads **2.5.0**, verifies SHA-256, installs the program files and reopens the studio. The existing `tracks` and `exports` stay in the installation folder. The access token is protected for your Windows user with DPAPI. Use **Sign out** to remove it, or sign in again when the session expires.
 
 **Upgrading from 0.2.1 without GitHub CLI:** download **Framequiz-Update.exe** from Releases, exit the old studio via its tray menu, and double-click the updater. Select the existing Framequiz.exe when prompted. Your tracks, exported videos and drafts are kept.
 
-To publish the next release, update the package version in **Cargo.toml** and its matching entry in **Cargo.lock**, commit the changes to main, then select **Actions → Publish Windows release → Run workflow**. The job builds the code, reuses the packaged FFmpeg from the previous release and publishes a new version tag and ZIP. User media, exports and WebView2 drafts are stored separately.
+To publish the next release, update the package version in **Cargo.toml** and its matching entry in **Cargo.lock**, push both files to `main` to trigger **Publish Windows release**. The job builds the code, reuses the packaged FFmpeg from the previous release and publishes a new version tag and ZIP. User media, exports and WebView2 drafts are stored separately.
 
 Click the version in the header for live update status. A per-launch session protects local API and audio requests. The studio runs at most two FFmpeg jobs at once.
+
+Already installed 3.0.0? Close it from the tray and extract the [2.5.0 ZIP](https://github.com/Rub1nchik702/framequiz/releases/tag/v2.5.0) over the same installation folder. The updater only installs higher version numbers.
 
 ## Development
 
